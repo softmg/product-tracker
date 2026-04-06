@@ -1,0 +1,199 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Product Tracker Design System */
+  /* Primary: #6228FF (violet) */
+  --background: #FFFFFF;
+  --foreground: #18181B;
+  --card: #FFFFFF;
+  --card-foreground: #18181B;
+  --popover: #FFFFFF;
+  --popover-foreground: #18181B;
+  --primary: #6228FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F7F7F8;
+  --secondary-foreground: #18181B;
+  --muted: #F7F7F8;
+  --muted-foreground: #71717A;
+  --accent: #F7F7F8;
+  --accent-foreground: #18181B;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E5E7;
+  --input: #E5E5E7;
+  --ring: #6228FF;
+  --chart-1: #6228FF;
+  --chart-2: #22C55E;
+  --chart-3: #F59E0B;
+  --chart-4: #EF4444;
+  --chart-5: #2563EB;
+  --radius: 0.5rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #18181B;
+  --sidebar-primary: #6228FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F3F0FF;
+  --sidebar-accent-foreground: #6228FF;
+  --sidebar-border: #E5E5E7;
+  --sidebar-ring: #6228FF;
+  
+  /* Status colors */
+  --status-backlog: #F3F4F6;
+  --status-backlog-foreground: #6B7280;
+  --status-scoring: #EDE9FE;
+  --status-scoring-foreground: #7C3AED;
+  --status-deep-dive: #DBEAFE;
+  --status-deep-dive-foreground: #2563EB;
+  --status-experiment: #FEF3C7;
+  --status-experiment-foreground: #D97706;
+  --status-analysis: #FCE7F3;
+  --status-analysis-foreground: #DB2777;
+  --status-go-no-go: #CFFAFE;
+  --status-go-no-go-foreground: #0891B2;
+  --status-done: #DCFCE7;
+  --status-done-foreground: #16A34A;
+  
+  /* Semantic colors */
+  --success: #22C55E;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #FFFFFF;
+  --info: #2563EB;
+  --info-foreground: #FFFFFF;
+}
+
+.dark {
+  --background: #08081E;
+  --foreground: #FAFAFA;
+  --card: #0F0F2A;
+  --card-foreground: #FAFAFA;
+  --popover: #0F0F2A;
+  --popover-foreground: #FAFAFA;
+  --primary: #6228FF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1C1C3A;
+  --secondary-foreground: #FAFAFA;
+  --muted: #1C1C3A;
+  --muted-foreground: #9CA3AF;
+  --accent: #1C1C3A;
+  --accent-foreground: #FAFAFA;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #1C1C3A;
+  --input: #1C1C3A;
+  --ring: #6228FF;
+  --chart-1: #7C52FF;
+  --chart-2: #22C55E;
+  --chart-3: #F59E0B;
+  --chart-4: #EF4444;
+  --chart-5: #3B82F6;
+  --sidebar: #0F0F2A;
+  --sidebar-foreground: #FAFAFA;
+  --sidebar-primary: #6228FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1C1C3A;
+  --sidebar-accent-foreground: #7C52FF;
+  --sidebar-border: #1C1C3A;
+  --sidebar-ring: #6228FF;
+  
+  /* Status colors (dark) */
+  --status-backlog: #27272A;
+  --status-backlog-foreground: #A1A1AA;
+  --status-scoring: #2E1065;
+  --status-scoring-foreground: #A78BFA;
+  --status-deep-dive: #1E3A5F;
+  --status-deep-dive-foreground: #60A5FA;
+  --status-experiment: #451A03;
+  --status-experiment-foreground: #FBBF24;
+  --status-analysis: #500724;
+  --status-analysis-foreground: #F472B6;
+  --status-go-no-go: #164E63;
+  --status-go-no-go-foreground: #22D3EE;
+  --status-done: #14532D;
+  --status-done-foreground: #4ADE80;
+  
+  /* Semantic colors */
+  --success: #22C55E;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #000000;
+  --info: #3B82F6;
+  --info-foreground: #FFFFFF;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Status colors */
+  --color-status-backlog: var(--status-backlog);
+  --color-status-backlog-foreground: var(--status-backlog-foreground);
+  --color-status-scoring: var(--status-scoring);
+  --color-status-scoring-foreground: var(--status-scoring-foreground);
+  --color-status-deep-dive: var(--status-deep-dive);
+  --color-status-deep-dive-foreground: var(--status-deep-dive-foreground);
+  --color-status-experiment: var(--status-experiment);
+  --color-status-experiment-foreground: var(--status-experiment-foreground);
+  --color-status-analysis: var(--status-analysis);
+  --color-status-analysis-foreground: var(--status-analysis-foreground);
+  --color-status-go-no-go: var(--status-go-no-go);
+  --color-status-go-no-go-foreground: var(--status-go-no-go-foreground);
+  --color-status-done: var(--status-done);
+  --color-status-done-foreground: var(--status-done-foreground);
+  
+  /* Semantic colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
