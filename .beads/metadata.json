@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "product_tracker",
+  "project_id": "7749e539-4899-4285-a708-64c81652b4ca"
+}
