@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Hypothesis;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
@@ -85,10 +86,14 @@ class AnalyticsService
             $query->where('created_at', '<=', $to);
         }
 
+        $monthExpr = DB::getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', created_at)"
+            : "to_char(created_at, 'YYYY-MM')";
+
         return $query
-            ->selectRaw("to_char(created_at, 'YYYY-MM') as month, COUNT(*) as count")
-            ->groupByRaw("to_char(created_at, 'YYYY-MM')")
-            ->orderByRaw("to_char(created_at, 'YYYY-MM')")
+            ->selectRaw("{$monthExpr} as month, COUNT(*) as count")
+            ->groupByRaw($monthExpr)
+            ->orderByRaw($monthExpr)
             ->get()
             ->map(static fn (Hypothesis $row): array => [
                 'month' => (string) $row->getAttribute('month'),
