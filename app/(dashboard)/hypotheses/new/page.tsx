@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
 import { mockTeams, mockUsers } from "@/lib/mock-data"
+import { createHypothesisFx } from "@/lib/stores/hypotheses/model"
 
 export default function NewHypothesisPage() {
   const router = useRouter()
@@ -34,15 +35,25 @@ export default function NewHypothesisPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // In a real app, this would create the hypothesis
-    router.push("/hypotheses")
+
+    const form = e.currentTarget
+    const data = new FormData(form)
+
+    try {
+      const result = await createHypothesisFx({
+        title: String(data.get("title") ?? ""),
+        problem: String(data.get("problem") ?? "") || undefined,
+        solution: String(data.get("solution") ?? "") || undefined,
+        target_audience: String(data.get("audience") ?? "") || undefined,
+        priority: (data.get("priority") as "low" | "medium" | "high") || undefined,
+      })
+      router.push(`/hypotheses/${result.id}`)
+    } catch {
+      setIsSubmitting(false)
+    }
   }
 
-  const owners = mockUsers.filter(u => u.role !== "viewer" && u.isActive)
+  const owners = mockUsers.filter(u => u.role !== "initiator" && u.isActive)
 
   return (
     <>
@@ -84,8 +95,9 @@ export default function NewHypothesisPage() {
                 {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Название *</Label>
-                  <Input 
-                    id="title" 
+                  <Input
+                    id="title"
+                    name="title"
                     placeholder="например, Добавление социального входа увеличит конверсию"
                     required
                   />
@@ -97,8 +109,9 @@ export default function NewHypothesisPage() {
                 {/* Problem / Customer Pain */}
                 <div className="space-y-2">
                   <Label htmlFor="problem">Проблема / боль клиента *</Label>
-                  <Textarea 
-                    id="problem" 
+                  <Textarea
+                    id="problem"
+                    name="problem"
                     placeholder="Опишите проблему или боль клиента, которую вы хотите решить..."
                     rows={3}
                     required
@@ -108,8 +121,9 @@ export default function NewHypothesisPage() {
                 {/* Solution Statement */}
                 <div className="space-y-2">
                   <Label htmlFor="solution">Формулировка решения «Мы верим, что...» *</Label>
-                  <Textarea 
-                    id="solution" 
+                  <Textarea
+                    id="solution"
+                    name="solution"
                     placeholder="Мы верим, что если мы сделаем X, то произойдёт Y..."
                     rows={2}
                     required
@@ -130,8 +144,9 @@ export default function NewHypothesisPage() {
                 {/* Target Audience */}
                 <div className="space-y-2">
                   <Label htmlFor="audience">Целевая аудитория *</Label>
-                  <Textarea 
-                    id="audience" 
+                  <Textarea
+                    id="audience"
+                    name="audience"
                     placeholder="Опишите целевую аудиторию для данной гипотезы..."
                     rows={2}
                     required

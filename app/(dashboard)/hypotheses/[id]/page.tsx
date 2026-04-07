@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Pencil, Trash2, MoreHorizontal, Clock, Send, MessageSquare } from "lucide-react"
@@ -45,17 +45,18 @@ import { RisksResourcesForm } from "@/components/hypotheses/risks-resources-form
 import { CommitteeDecisionForm } from "@/components/hypotheses/committee-decision-form"
 import { StatusTransitionPanel } from "@/components/hypotheses/status-transition-panel"
 import { useAuth } from "@/lib/auth-context"
-import { 
-  getHypothesisById, 
-  getExperimentsByHypothesisId, 
-  getUserById, 
+import {
+  getHypothesisById,
+  getExperimentsByHypothesisId,
+  getUserById,
   getTeamById,
   getCommentsByHypothesisId,
   mockAuditLog,
   mockUsers,
-  statusDisplayInfo 
+  statusDisplayInfo,
 } from "@/lib/mock-data"
 import type { HypothesisStatus } from "@/lib/types"
+import { fetchHypothesisFx, transitionHypothesisFx } from "@/lib/stores/hypotheses/model"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -64,15 +65,24 @@ interface PageProps {
 export default function HypothesisPage({ params }: PageProps) {
   const { id } = use(params)
   const { user, hasPermission } = useAuth()
-  
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editStatus, setEditStatus] = useState<HypothesisStatus | "">("")
   const [editOwnerId, setEditOwnerId] = useState("")
   const [newComment, setNewComment] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
-  
-  const hypothesis = getHypothesisById(id)
-  
+
+  // Fetch via Effector on mount — populates $currentHypothesis for other consumers
+  useEffect(() => {
+    const numericId = Number.parseInt(id, 10)
+    if (!Number.isNaN(numericId)) {
+      void fetchHypothesisFx(numericId)
+    }
+  }, [id])
+
+  // Resolve hypothesis: try direct id, then "hyp-<id>" for numeric mock ids
+  const hypothesis = getHypothesisById(id) ?? getHypothesisById(`hyp-${id}`)
+
   if (!hypothesis) {
     notFound()
   }
@@ -208,12 +218,18 @@ export default function HypothesisPage({ params }: PageProps) {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Status Transition Panel */}
-              <StatusTransitionPanel 
+              <StatusTransitionPanel
                 hypothesis={hypothesis}
                 experiments={experiments}
                 onTransition={(toStatus, data) => {
-                  console.log("[v0] Transitioning to:", toStatus, data)
-                  // In real app, would call API and update state
+                  const numericId = Number.parseInt(id, 10)
+                  if (!Number.isNaN(numericId)) {
+                    void transitionHypothesisFx({
+                      id: numericId,
+                      to_status: toStatus,
+                      comment: data?.comment,
+                    })
+                  }
                 }}
                 onTabChange={setActiveTab}
               />
@@ -494,7 +510,7 @@ export default function HypothesisPage({ params }: PageProps) {
                   <SelectValue placeholder="Выберите ответственного" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockUsers.filter(u => u.isActive && u.role !== 'viewer').map((u) => (
+                  {mockUsers.filter(u => u.isActive && u.role !== 'initiator').map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name}
                     </SelectItem>

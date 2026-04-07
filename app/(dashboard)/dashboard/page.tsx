@@ -32,19 +32,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useUnit } from "effector-react"
 import { useAuth } from "@/lib/auth-context"
-import { 
-  mockHypotheses, 
+import {
+  mockHypotheses,
   mockExperiments,
   mockAuditLog,
   mockSLAConfigs,
   statusDisplayInfo,
   getUserById,
-  roleLabels
+  roleLabels,
 } from "@/lib/mock-data"
 import type { Hypothesis, HypothesisStatus, AuditLogEntry, UserRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/hypotheses/status-badge"
+import { $hypotheses, $isLoading, fetchHypothesesFx } from "@/lib/stores/hypotheses/model"
 
 // Russian status labels
 const statusLabelsRu: Record<HypothesisStatus, string> = {
@@ -60,8 +62,12 @@ const statusLabelsRu: Record<HypothesisStatus, string> = {
 // Russian role labels
 const roleLabelsRu: Record<UserRole, string> = {
   admin: "Администратор",
-  po: "Product Owner",
-  viewer: "Инициатор",
+  initiator: "Инициатор",
+  pd_manager: "PD Manager",
+  analyst: "Аналитик",
+  tech_lead: "Техлид",
+  bizdev: "BizDev",
+  committee: "Комитет",
 }
 
 // Action hints for different statuses
@@ -161,9 +167,17 @@ const eventTypeLabels: Record<string, string> = {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, hasPermission } = useAuth()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(new Date())
+
+  // Load hypotheses from Effector store
+  const storeHypotheses = useUnit($hypotheses)
+  const storeLoading = useUnit($isLoading)
+
+  useEffect(() => {
+    void fetchHypothesesFx({})
+  }, [])
   const [activityFilter, setActivityFilter] = useState<string>("all")
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     actions: false,
@@ -249,7 +263,7 @@ export default function DashboardPage() {
       .filter(item => item.sla.status !== "ok").length
   }, [userHypotheses])
 
-  // Get hypotheses by status for chart
+  // Get hypotheses by status for chart — prefer Effector store data (real API or mock)
   const hypothesesByStatus = useMemo(() => {
     const counts: Record<HypothesisStatus, number> = {
       backlog: 0,
@@ -260,11 +274,13 @@ export default function DashboardPage() {
       go_no_go: 0,
       done: 0,
     }
-    userHypotheses.forEach(h => {
-      counts[h.status]++
+    const source = storeHypotheses.length > 0 ? storeHypotheses : userHypotheses
+    source.forEach((h) => {
+      const s = h.status as HypothesisStatus
+      if (s in counts) counts[s]++
     })
     return counts
-  }, [userHypotheses])
+  }, [storeHypotheses, userHypotheses])
 
   const maxStatusCount = useMemo(() => {
     return Math.max(...Object.values(hypothesesByStatus), 1)
@@ -410,7 +426,7 @@ export default function DashboardPage() {
                 <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
                 Обновить
               </Button>
-              {user.role !== "viewer" && (
+              {hasPermission("hypothesis:create") && (
                 <Button asChild>
                   <Link href="/hypotheses/new">
                     <Plus className="mr-2 h-4 w-4" />
@@ -682,9 +698,9 @@ export default function DashboardPage() {
                             </p>
                             {log.action === "status_change" && log.changes.status && (
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                {statusLabelsRu[log.changes.status.old as HypothesisStatus] || log.changes.status.old}
+                                {statusLabelsRu[log.changes.status.old as HypothesisStatus] || String(log.changes.status.old)}
                                 {" → "}
-                                {statusLabelsRu[log.changes.status.new as HypothesisStatus] || log.changes.status.new}
+                                {statusLabelsRu[log.changes.status.new as HypothesisStatus] || String(log.changes.status.new)}
                               </p>
                             )}
                           </div>

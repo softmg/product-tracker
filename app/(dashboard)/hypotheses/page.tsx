@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { Plus, Search, X, Filter, LayoutList, LayoutGrid } from "lucide-react"
+import { useUnit } from "effector-react"
 import { Header } from "@/components/layout/header"
 import { HypothesisTable } from "@/components/hypotheses/hypothesis-table"
 import { HypothesisKanban } from "@/components/hypotheses/hypothesis-kanban"
@@ -17,16 +18,38 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth-context"
-import { 
-  mockHypotheses, 
-  mockTeams, 
-  mockUsers, 
-  statusDisplayInfo 
-} from "@/lib/mock-data"
-import type { HypothesisStatus } from "@/lib/types"
+import { mockTeams, mockUsers, statusDisplayInfo } from "@/lib/mock-data"
+import type { Hypothesis, HypothesisStatus } from "@/lib/types"
+import {
+  $hypotheses,
+  $isLoading,
+  fetchHypothesesFx,
+  isHypothesisMockMode,
+} from "@/lib/stores/hypotheses/model"
+import type { ApiHypothesisList } from "@/lib/stores/hypotheses/types"
 
 type ViewMode = "table" | "kanban"
+
+/** Bridge: map API list item to the Hypothesis shape expected by UI components */
+function apiToHypothesis(h: ApiHypothesisList): Hypothesis {
+  return {
+    id: String(h.id),
+    code: h.code,
+    title: h.title,
+    description: "",
+    status: h.status as HypothesisStatus,
+    teamId: h.team ? String(h.team.id) : "",
+    ownerId: h.owner ? String(h.owner.id) : "",
+    deadline: h.sla_deadline ?? undefined,
+    createdAt: h.created_at,
+    updatedAt: h.updated_at,
+    scoring: h.scoring_primary != null
+      ? { criteriaScores: {}, stopFactorTriggered: false, totalScore: h.scoring_primary, scoredAt: "", scoredBy: "" }
+      : undefined,
+  }
+}
 
 export default function HypothesesPage() {
   const { hasPermission } = useAuth()
@@ -36,6 +59,9 @@ export default function HypothesesPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<ViewMode>("table")
 
+  const hypothesesRaw = useUnit($hypotheses)
+  const isLoading = useUnit($isLoading)
+
   // Load view preference from localStorage
   useEffect(() => {
     const savedView = localStorage.getItem("hypotheses-view-mode") as ViewMode | null
@@ -44,44 +70,45 @@ export default function HypothesesPage() {
     }
   }, [])
 
-  // Save view preference to localStorage
-  const handleViewChange = (value: string) => {
-    if (value === "table" || value === "kanban") {
-      setViewMode(value)
-      localStorage.setItem("hypotheses-view-mode", value)
-    }
-  }
+  // Initial fetch
+  useEffect(() => {
+    void fetchHypothesesFx({})
+  }, [])
 
+  // Re-fetch from API when filters change (API mode only — mock mode filters client-side)
+  useEffect(() => {
+    if (!isHypothesisMockMode) {
+      void fetchHypothesesFx({
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        search: searchQuery || undefined,
+        team_id: teamFilter !== "all" ? Number(teamFilter) : undefined,
+      })
+    }
+  }, [statusFilter, searchQuery, teamFilter])
+
+  const hypotheses = useMemo(() => hypothesesRaw.map(apiToHypothesis), [hypothesesRaw])
+
+  // Client-side filtering (used in mock mode; API mode relies on server filtering)
   const filteredHypotheses = useMemo(() => {
-    return mockHypotheses.filter((h) => {
-      // Search filter
+    if (!isHypothesisMockMode) return hypotheses
+
+    return hypotheses.filter((h) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
-        const matchesSearch = 
-          h.title.toLowerCase().includes(query) ||
-          h.code.toLowerCase().includes(query) ||
-          h.description.toLowerCase().includes(query)
-        if (!matchesSearch) return false
+        if (
+          !h.title.toLowerCase().includes(query) &&
+          !h.code.toLowerCase().includes(query) &&
+          !h.description.toLowerCase().includes(query)
+        ) {
+          return false
+        }
       }
-
-      // Status filter (only in table view)
-      if (viewMode === "table" && statusFilter !== "all" && h.status !== statusFilter) {
-        return false
-      }
-
-      // Team filter
-      if (teamFilter !== "all" && h.teamId !== teamFilter) {
-        return false
-      }
-
-      // Owner filter
-      if (ownerFilter !== "all" && h.ownerId !== ownerFilter) {
-        return false
-      }
-
+      if (viewMode === "table" && statusFilter !== "all" && h.status !== statusFilter) return false
+      if (teamFilter !== "all" && h.teamId !== teamFilter) return false
+      if (ownerFilter !== "all" && h.ownerId !== ownerFilter) return false
       return true
     })
-  }, [searchQuery, statusFilter, teamFilter, ownerFilter, viewMode])
+  }, [hypotheses, searchQuery, statusFilter, teamFilter, ownerFilter, viewMode])
 
   const activeFiltersCount = [
     viewMode === "table" && statusFilter !== "all",
@@ -96,15 +123,21 @@ export default function HypothesesPage() {
     setSearchQuery("")
   }
 
-  // Get unique owners from hypotheses
-  const owners = mockUsers.filter(u => 
-    mockHypotheses.some(h => h.ownerId === u.id)
-  )
+  // Save view preference to localStorage
+  const handleViewChange = (value: string) => {
+    if (value === "table" || value === "kanban") {
+      setViewMode(value)
+      localStorage.setItem("hypotheses-view-mode", value)
+    }
+  }
+
+  // Owners list from current hypothesis data
+  const owners = mockUsers.filter((u) => hypotheses.some((h) => h.ownerId === u.id))
 
   return (
     <>
       <Header breadcrumbs={[{ title: "Гипотезы" }]} />
-      
+
       <main className="flex-1 overflow-auto">
         <div className="container pl-8 pr-8 py-6 space-y-6">
           {/* Page header */}
@@ -148,7 +181,6 @@ export default function HypothesesPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Status filter - only show in table view */}
               {viewMode === "table" && (
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as HypothesisStatus | "all")}>
                   <SelectTrigger className="w-[140px]">
@@ -218,15 +250,30 @@ export default function HypothesesPage() {
           </div>
 
           {/* Results count */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              Найдено: {filteredHypotheses.length} {filteredHypotheses.length === 1 ? "гипотеза" : filteredHypotheses.length >= 2 && filteredHypotheses.length <= 4 ? "гипотезы" : "гипотез"}
-            </span>
-          </div>
+          {isLoading ? (
+            <Skeleton className="h-5 w-48" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Найдено: {filteredHypotheses.length}{" "}
+                {filteredHypotheses.length === 1
+                  ? "гипотеза"
+                  : filteredHypotheses.length >= 2 && filteredHypotheses.length <= 4
+                    ? "гипотезы"
+                    : "гипотез"}
+              </span>
+            </div>
+          )}
 
           {/* Table / Kanban View */}
-          {viewMode === "table" ? (
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : viewMode === "table" ? (
             <HypothesisTable hypotheses={filteredHypotheses} />
           ) : (
             <HypothesisKanban hypotheses={filteredHypotheses} />

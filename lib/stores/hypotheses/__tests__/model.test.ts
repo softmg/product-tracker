@@ -33,9 +33,14 @@ describe("hypotheses store", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.resetModules()
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
 
     vi.doMock("@/lib/api-client", () => ({
       apiClient: { get: mockGet, post: mockPost, put: vi.fn(), delete: vi.fn() },
+    }))
+    vi.doMock("@/lib/mock-data", () => ({
+      mockHypotheses: [],
     }))
   })
 
