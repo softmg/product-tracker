@@ -12,3 +12,11 @@ backend/.env
 backend/.env.local
 
 node_modules
+
+# Build artifacts
+.next/
+tsconfig.tsbuildinfo
+
+# Tool caches
+.claw/
+.omc/
