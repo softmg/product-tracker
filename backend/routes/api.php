@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Admin\StatusTransitionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\SetupController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\CommitteeController;
@@ -29,6 +30,11 @@ Route::prefix('v1')->group(function () {
         'status' => 'ok',
         'timestamp' => now()->toIso8601String(),
     ]));
+
+    Route::prefix('setup')->group(function () {
+        Route::get('/status', [SetupController::class, 'status']);
+        Route::post('/admin', [SetupController::class, 'createAdmin']);
+    });
 
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
