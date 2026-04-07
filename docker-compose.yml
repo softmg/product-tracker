@@ -1,0 +1,73 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/docker/nginx/default.conf:/etc/nginx/http.d/default.conf:ro
+    ports:
+      - "${BACKEND_PORT:-8000}:80"
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-product_tracker}
+      DB_USERNAME: ${POSTGRES_USER:-tracker}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    command: sh -c "php-fpm -D && nginx -g 'daemon off;'"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - tracker-net
+
+  db:
+    image: postgres:16
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-product_tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-tracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - tracker-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - tracker-net
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+    depends_on:
+      - backend
+    networks:
+      - tracker-net
+
+networks:
+  tracker-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  frontend-node-modules:
