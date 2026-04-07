@@ -20,3 +20,8 @@ tsconfig.tsbuildinfo
 # Tool caches
 .claw/
 .omc/
+
+# Test artifacts
+playwright-report/
+test-results/
+backend/test-results/
