@@ -175,8 +175,3 @@ export function useAuth() {
   return context
 }
 
-export const mockCredentials = [
-  { email: "admin@company.com", password: "admin123", role: "admin" as const },
-  { email: "po@company.com", password: "po123", role: "pd_manager" as const },
-  { email: "viewer@company.com", password: "viewer123", role: "initiator" as const },
-]

@@ -59,7 +59,7 @@ services:
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend/api}
-      NEXT_PUBLIC_USE_MOCKS: ${NEXT_PUBLIC_USE_MOCKS:-true}
+      NEXT_PUBLIC_USE_MOCKS: ${NEXT_PUBLIC_USE_MOCKS:-false}
     depends_on:
       - backend
     networks:

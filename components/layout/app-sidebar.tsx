@@ -19,6 +19,7 @@ import {
   Bell,
   BarChart3,
   LayoutDashboard,
+  BookOpen,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -70,6 +71,12 @@ const mainNavItems = [
 ]
 
 const adminNavItems = [
+  {
+    title: "Руководство по настройке",
+    href: "/admin/onboarding",
+    icon: BookOpen,
+    permission: "admin:settings" as const,
+  },
   {
     title: "Пользователи",
     href: "/admin/users",

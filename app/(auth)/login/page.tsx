@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth, mockCredentials } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
+import { isAuthMockMode } from "@/lib/stores/auth/model"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,23 +28,8 @@ export default function LoginPage() {
     if (success) {
       router.push("/dashboard")
     } else {
-      setError("Неверный email или пароль. Попробуйте один из демо-аккаунтов ниже.")
+      setError("Неверный email или пароль.")
     }
-  }
-
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail)
-    setPassword(demoPassword)
-    setError("")
-
-    const success = await login(demoEmail, demoPassword)
-
-    if (success) {
-      router.push("/dashboard")
-      return
-    }
-
-    setError("Не удалось войти в демо-режиме. Проверьте настройки API/моков.")
   }
 
   return (
@@ -70,7 +56,7 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -83,12 +69,12 @@ export default function LoginPage() {
                 autoComplete="email"
               />
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Пароль</Label>
-                <Link 
-                  href="/forgot-password" 
+                <Link
+                  href="/forgot-password"
                   className="text-xs text-primary hover:underline"
                 >
                   Забыли пароль?
@@ -113,32 +99,14 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      {/* Demo accounts */}
-      <Card className="border-dashed">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Демо-аккаунты</CardTitle>
-          <CardDescription className="text-xs">
-            Нажмите для входа с демо-аккаунтом
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {mockCredentials.map((cred) => (
-            <Button
-              key={cred.email}
-              variant="outline"
-              size="sm"
-              className="w-full justify-between text-xs"
-              onClick={() => handleDemoLogin(cred.email, cred.password)}
-              disabled={isLoading}
-            >
-              <span className="truncate">{cred.email}</span>
-              <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
-                {cred.role}
-              </span>
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+      {!isAuthMockMode && (
+        <p className="text-center text-sm text-muted-foreground">
+          Первый запуск?{" "}
+          <Link href="/setup" className="text-primary hover:underline font-medium">
+            Создать администратора
+          </Link>
+        </p>
+      )}
     </div>
   )
 }
