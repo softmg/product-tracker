@@ -17,7 +17,8 @@ import type {
   NotificationEventConfig,
   Notification,
   Respondent,
-  PainSummary
+  PainSummary,
+  UserRole
 } from './types'
 
 // Teams
@@ -41,46 +42,46 @@ export const mockUsers: User[] = [
     lastLoginAt: '2024-03-15',
     avatar: undefined
   },
-  { 
-    id: 'user-2', 
-    email: 'po@company.com', 
-    name: 'Maria Petrova', 
-    role: 'po', 
-    teamId: 'team-2', 
-    isActive: true, 
+  {
+    id: 'user-2',
+    email: 'po@company.com',
+    name: 'Maria Petrova',
+    role: 'pd_manager',
+    teamId: 'team-2',
+    isActive: true,
     createdAt: '2024-01-05',
     lastLoginAt: '2024-03-14',
     avatar: undefined
   },
-  { 
-    id: 'user-3', 
-    email: 'viewer@company.com', 
-    name: 'Ivan Sidorov', 
-    role: 'viewer', 
-    teamId: 'team-2', 
-    isActive: true, 
+  {
+    id: 'user-3',
+    email: 'viewer@company.com',
+    name: 'Ivan Sidorov',
+    role: 'initiator',
+    teamId: 'team-2',
+    isActive: true,
     createdAt: '2024-01-10',
     lastLoginAt: '2024-03-10',
     avatar: undefined
   },
-  { 
-    id: 'user-4', 
-    email: 'po2@company.com', 
-    name: 'Elena Kozlova', 
-    role: 'po', 
-    teamId: 'team-3', 
-    isActive: true, 
+  {
+    id: 'user-4',
+    email: 'po2@company.com',
+    name: 'Elena Kozlova',
+    role: 'pd_manager',
+    teamId: 'team-3',
+    isActive: true,
     createdAt: '2024-02-01',
     lastLoginAt: '2024-03-13',
     avatar: undefined
   },
-  { 
-    id: 'user-5', 
-    email: 'inactive@company.com', 
-    name: 'Dmitry Volkov', 
-    role: 'viewer', 
-    teamId: 'team-1', 
-    isActive: false, 
+  {
+    id: 'user-5',
+    email: 'inactive@company.com',
+    name: 'Dmitry Volkov',
+    role: 'initiator',
+    teamId: 'team-1',
+    isActive: false,
     createdAt: '2024-01-20',
     lastLoginAt: '2024-02-01',
     avatar: undefined
@@ -280,9 +281,16 @@ export const mockHypotheses: Hypothesis[] = [
     createdAt: '2024-02-15',
     updatedAt: '2024-02-15',
     scoring: {
-      impact: 6,
-      confidence: 5,
-      ease: 7,
+      criteriaScores: {
+        'crit-tam': 1800000,
+        'crit-som': 250000,
+        'crit-market-potential': 4,
+        'crit-competency-fit': 3,
+        'crit-resource-cost': 4,
+        'crit-strategic-fit': 4,
+        'crit-stop-factor': 0
+      },
+      stopFactorTriggered: false,
       totalScore: 210,
       scoredAt: '2024-02-20',
       scoredBy: 'user-2'
@@ -985,10 +993,14 @@ export const experimentStatusLabels: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 
-export const roleLabels: Record<string, string> = {
+export const roleLabels: Record<UserRole, string> = {
   admin: 'Administrator',
-  po: 'Product Owner',
-  viewer: 'Viewer',
+  initiator: 'Initiator',
+  pd_manager: 'Product Discovery Manager',
+  analyst: 'Analyst',
+  tech_lead: 'Tech Lead',
+  bizdev: 'BizDev',
+  committee: 'Committee',
 }
 
 // Comments
@@ -1047,7 +1059,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'Бенчмаркинг: анализ рынка и конкурентов',
     order: 1,
     isRequired: true,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1056,7 +1068,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'CRM-таблица контактов для интервью',
     order: 2,
     isRequired: true,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1065,7 +1077,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'Минимум 3-5 интервью с тегами болей',
     order: 3,
     isRequired: true,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1074,7 +1086,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'Customer Journey Map или Jobs To Be Done анализ',
     order: 4,
     isRequired: false,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1083,7 +1095,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'LTV, CAC, маржа и другие финансовые показатели',
     order: 5,
     isRequired: true,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1092,7 +1104,7 @@ export const mockDeepDiveStages: DeepDiveStageConfig[] = [
     description: 'Оценка ресурсов: бэкенд, фронт, аналитика',
     order: 6,
     isRequired: true,
-    responsibleRole: 'po',
+    responsibleRole: 'pd_manager',
     isActive: true,
   },
   {
@@ -1165,7 +1177,7 @@ export const mockStatusTransitions: StatusTransition[] = [
     id: 'trans-1',
     fromStatus: 'backlog',
     toStatus: 'scoring',
-    allowedRoles: ['admin', 'po'],
+    allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'required_fields',
     conditionValue: 'title,description',
     isActive: true,
@@ -1174,7 +1186,7 @@ export const mockStatusTransitions: StatusTransition[] = [
     id: 'trans-2',
     fromStatus: 'scoring',
     toStatus: 'deep_dive',
-    allowedRoles: ['admin', 'po'],
+    allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'scoring_threshold',
     conditionValue: '7.0',
     isActive: true,
@@ -1183,7 +1195,7 @@ export const mockStatusTransitions: StatusTransition[] = [
     id: 'trans-3',
     fromStatus: 'deep_dive',
     toStatus: 'experiment',
-    allowedRoles: ['admin', 'po'],
+    allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'checklist_closed',
     isActive: true,
   },
@@ -1191,7 +1203,7 @@ export const mockStatusTransitions: StatusTransition[] = [
     id: 'trans-4',
     fromStatus: 'experiment',
     toStatus: 'analysis',
-    allowedRoles: ['admin', 'po'],
+    allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'none',
     isActive: true,
   },
@@ -1217,7 +1229,7 @@ export const mockStatusTransitions: StatusTransition[] = [
     id: 'trans-7',
     fromStatus: 'experiment',
     toStatus: 'deep_dive',
-    allowedRoles: ['admin', 'po'],
+    allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'none',
     isActive: true,
   },
@@ -1274,42 +1286,42 @@ export const mockNotificationEvents: NotificationEventConfig[] = [
     id: 'notif-1',
     eventType: 'status_change',
     isActive: true,
-    recipients: ['admin', 'po'],
+    recipients: ['admin', 'pd_manager'],
     template: 'Гипотеза {hyp_id} "{title}" перешла в статус {new_status}. Ответственный: {pm_name}. {url}',
   },
   {
     id: 'notif-2',
     eventType: 'responsible_assigned',
     isActive: true,
-    recipients: ['po'],
+    recipients: ['pd_manager'],
     template: 'Вам назначена гипотеза {hyp_id} "{title}". {url}',
   },
   {
     id: 'notif-3',
     eventType: 'committee_decision',
     isActive: true,
-    recipients: ['admin', 'po'],
+    recipients: ['admin', 'pd_manager'],
     template: 'Решение ПК по гипотезе {hyp_id}: {decision}. {url}',
   },
   {
     id: 'notif-4',
     eventType: 'sla_warning',
     isActive: true,
-    recipients: ['admin', 'po'],
+    recipients: ['admin', 'pd_manager'],
     template: 'Внимание! Гипотеза {hyp_id} скоро просрочит SLA (осталось {days_left} дней). {url}',
   },
   {
     id: 'notif-5',
     eventType: 'sla_violation',
     isActive: true,
-    recipients: ['admin', 'po'],
+    recipients: ['admin', 'pd_manager'],
     template: 'Нарушение SLA! Гипотеза {hyp_id} просрочена на {days_overdue} дней. {url}',
   },
   {
     id: 'notif-6',
     eventType: 'artifact_added',
     isActive: false,
-    recipients: ['po'],
+    recipients: ['pd_manager'],
     template: 'К гипотезе {hyp_id} добавлен артефакт: {artifact_name}. {url}',
   },
   {

@@ -417,7 +417,7 @@ export default function AdminTransitionsPage() {
             <div className="space-y-2">
               <Label>Роли, которые могут выполнить переход</Label>
               <div className="flex gap-4">
-                {(["admin", "po", "viewer"] as UserRole[]).map(role => (
+                {(["admin", "pd_manager", "initiator", "analyst", "tech_lead", "bizdev", "committee"] as UserRole[]).map(role => (
                   <div key={role} className="flex items-center gap-2">
                     <Checkbox 
                       id={`role-${role}`}

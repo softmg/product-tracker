@@ -31,13 +31,19 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = async (demoEmail: string) => {
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail)
+    setPassword(demoPassword)
     setError("")
-    const success = await login(demoEmail, "demo")
+
+    const success = await login(demoEmail, demoPassword)
+
     if (success) {
       router.push("/dashboard")
+      return
     }
+
+    setError("Не удалось войти в демо-режиме. Проверьте настройки API/моков.")
   }
 
   return (
@@ -122,7 +128,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               className="w-full justify-between text-xs"
-              onClick={() => handleDemoLogin(cred.email)}
+              onClick={() => handleDemoLogin(cred.email, cred.password)}
               disabled={isLoading}
             >
               <span className="truncate">{cred.email}</span>

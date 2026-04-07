@@ -29,11 +29,20 @@ components/
 lib/
   types.ts             # все TypeScript типы (единственный источник)
   mock-data.ts         # тестовые данные (обновлять при изменении модели)
-  auth-context.tsx     # mock-авторизация + rolePermissions
+  auth-context.tsx     # AuthProvider поверх Effector auth-store + rolePermissions
   utils.ts             # cn() и прочие утилиты
 
 styles/
   globals.css          # НЕ ИСПОЛЬЗОВАТЬ — дефолтный shadcn с oklch
+
+backend/
+  Dockerfile           # PHP-FPM runtime image
+  .dockerignore        # исключения для backend build context
+  docker/nginx/default.conf # Nginx config proxying to PHP-FPM
+
+docker-compose.yml     # локальный full-stack compose: frontend, backend, db, redis
+Makefile               # команды: up/down/backend-shell/migrate/test-backend/fresh
+.env.example           # env для docker-compose
 
 tz.md                  # полное техническое задание
 wireframes.md          # ASCII-вайрфреймы всех экранов MVP
@@ -75,7 +84,8 @@ npx shadcn@latest add <component>
 - shadcn/ui компоненты — не модифицировать напрямую, обёртывать в бизнес-компоненты
 - Авторизация: `useAuth()` из `lib/auth-context.tsx`, проверка через `hasPermission()`
 - Layout dashboard защищён: редирект на `/login` если не авторизован (см. `app/(dashboard)/layout.tsx`)
-- Роли сейчас упрощены (admin/po/viewer вместо 7 по ТЗ) — при добавлении бэкенда расширить
+- Роли в UI и mock-модели: `admin|initiator|pd_manager|analyst|tech_lead|bizdev|committee`
+- `useAuth()` использует Effector store (`lib/stores/auth/model.ts`) и сохраняет прежний API контекста
 - Mock-данные изменять всегда при изменении типов
 
 ## Terms
@@ -90,16 +100,25 @@ npx shadcn@latest add <component>
 | Продуктовый комитет (ПК) | Голосующий орган: Go / No-Go / Iterate. Состав задаётся в Admin → Committee |
 | SLA | Максимальное допустимое время нахождения в статусе. Настраивается в Admin → SLA |
 
+## Environment and run modes
+
+- Frontend only: `npm run dev`
+- Full local stack (Docker): `make up` or `docker compose up -d`
+- Stop stack: `make down`
+- Backend shell: `make backend-shell`
+- Backend migrations/tests (после инициализации Laravel): `make migrate`, `make fresh`, `make test-backend`
+
 ## Known Gaps (TZ vs Implementation)
 
 | Gap | Где | Приоритет |
 |-----|-----|-----------|
-| Роли упрощены (3 вместо 7) | `lib/types.ts` UserRole | При бэкенде |
 | Статус `analysis` не в ТЗ | `lib/types.ts` HypothesisStatus | Low |
 | `done` объединяет "Решение" + "Архив" | Модель данных | При бэкенде |
 | Нет `initiatorId`, `priority` в Hypothesis | `lib/types.ts` | Medium |
-| Нет реального API | Весь проект | Следующая фаза |
-| Effector не подключён | — | Следующая фаза |
+| Нет реального API для большинства доменов | Весь проект | Следующая фаза |
+| Effector внедрён для auth, остальные домены пока на local state/mock | `lib/stores/auth/*` и UI-экраны | Следующая фаза |
+| Laravel skeleton ещё не инициализирован | `backend/` (только runtime и nginx config) | Ближайшая backend-волна |
+| Локальные порты в `.env` могут отличаться от `.env.example` при конфликтах | root `.env` | По необходимости |
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker

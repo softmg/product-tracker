@@ -316,7 +316,7 @@ export default function AdminNotificationsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {(['admin', 'po', 'viewer'] as UserRole[]).map(role => (
+                          {(['admin', 'pd_manager', 'initiator', 'analyst', 'tech_lead', 'bizdev', 'committee'] as UserRole[]).map(role => (
                             <Badge
                               key={role}
                               variant={event.recipients.includes(role) ? "default" : "outline"}

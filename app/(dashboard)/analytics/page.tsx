@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { mockHypotheses, mockTeams, mockUsers, statusLabels } from "@/lib/mock-data"
+import { mockHypotheses, mockTeams, mockUsers } from "@/lib/mock-data"
 
 // KPI Data
 const kpiData = {

@@ -38,7 +38,7 @@ export default function AdminDeepDivePage() {
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
   const [formIsRequired, setFormIsRequired] = useState(true)
-  const [formResponsibleRole, setFormResponsibleRole] = useState<UserRole>("po")
+  const [formResponsibleRole, setFormResponsibleRole] = useState<UserRole>("pd_manager")
 
   const toggleActive = (id: string) => {
     setStages(prev => prev.map(s => 
@@ -57,7 +57,7 @@ export default function AdminDeepDivePage() {
     setFormName("")
     setFormDescription("")
     setFormIsRequired(true)
-    setFormResponsibleRole("po")
+    setFormResponsibleRole("pd_manager")
     setIsDialogOpen(true)
   }
 
@@ -127,11 +127,16 @@ export default function AdminDeepDivePage() {
   const activeStages = stages.filter(s => s.isActive)
   const requiredStages = stages.filter(s => s.isActive && s.isRequired)
 
-  const getRoleBadgeVariant = (role: UserRole) => {
+  const getRoleBadgeClassName = (role: UserRole) => {
     switch (role) {
-      case 'admin': return 'destructive'
-      case 'po': return 'default'
-      case 'viewer': return 'secondary'
+      case "admin":
+        return "bg-destructive text-white"
+      case "pd_manager":
+        return "bg-primary text-primary-foreground"
+      case "initiator":
+        return "bg-secondary text-secondary-foreground"
+      default:
+        return "bg-muted text-muted-foreground"
     }
   }
 
@@ -199,8 +204,12 @@ export default function AdminDeepDivePage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Администратор</SelectItem>
-                        <SelectItem value="po">Product Owner</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="pd_manager">PD Manager</SelectItem>
+                        <SelectItem value="initiator">Инициатор</SelectItem>
+                        <SelectItem value="analyst">Аналитик</SelectItem>
+                        <SelectItem value="tech_lead">Техлид</SelectItem>
+                        <SelectItem value="bizdev">BizDev</SelectItem>
+                        <SelectItem value="committee">Комитет</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -290,7 +299,7 @@ export default function AdminDeepDivePage() {
                                 Опциональный
                               </Badge>
                             )}
-                            <Badge variant={getRoleBadgeVariant(stage.responsibleRole)}>
+                            <Badge className={getRoleBadgeClassName(stage.responsibleRole)}>
                               <Users className="mr-1 h-3 w-3" />
                               {roleLabels[stage.responsibleRole]}
                             </Badge>
@@ -363,7 +372,7 @@ export default function AdminDeepDivePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(['admin', 'po', 'viewer'] as UserRole[]).map((role) => {
+                {(['admin', 'pd_manager', 'initiator', 'analyst', 'tech_lead', 'bizdev', 'committee'] as UserRole[]).map((role) => {
                   const roleStages = activeStages.filter(s => s.responsibleRole === role)
                   const roleRequired = roleStages.filter(s => s.isRequired)
                   return (

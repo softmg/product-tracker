@@ -64,10 +64,22 @@ export default function AdminUsersPage() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "admin": return "bg-[#EDE9FE] text-[#7C3AED]"
-      case "po": return "bg-[#DBEAFE] text-[#2563EB]"
-      case "viewer": return "bg-[#F3F4F6] text-[#6B7280]"
-      default: return "bg-muted text-muted-foreground"
+      case "admin":
+        return "bg-[#EDE9FE] text-[#7C3AED]"
+      case "pd_manager":
+        return "bg-[#DBEAFE] text-[#2563EB]"
+      case "initiator":
+        return "bg-[#F3F4F6] text-[#6B7280]"
+      case "analyst":
+        return "bg-[#DCFCE7] text-[#166534]"
+      case "tech_lead":
+        return "bg-[#FEF3C7] text-[#92400E]"
+      case "bizdev":
+        return "bg-[#FCE7F3] text-[#9D174D]"
+      case "committee":
+        return "bg-[#F3E8FF] text-[#6B21A8]"
+      default:
+        return "bg-muted text-muted-foreground"
     }
   }
 

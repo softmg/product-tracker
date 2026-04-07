@@ -1,6 +1,6 @@
 // Product Tracker Types
 
-export type UserRole = 'admin' | 'po' | 'viewer'
+export type UserRole = 'admin' | 'initiator' | 'pd_manager' | 'analyst' | 'tech_lead' | 'bizdev' | 'committee'
 
 export interface User {
   id: string

@@ -210,9 +210,9 @@ export function StatusTransitionPanel({
             isMet: quorumReached 
           },
           { 
-            id: 'voting_done', 
-            label: 'Голосование завершено', 
-            isMet: hasVotes && quorumReached
+            id: 'voting_done',
+            label: 'Голосование завершено',
+            isMet: !!hasVotes && quorumReached
           },
         ]
       

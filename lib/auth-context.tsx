@@ -1,8 +1,24 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import type { User, UserRole } from './types'
-import { mockUsers } from './mock-data'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useUnit } from "effector-react"
+import type { User, UserRole } from "./types"
+import { loginFx, logoutFx, fetchMeFx, $user, $isAuthenticated, $isAuthLoading, isAuthMockMode, setUserRole } from "@/lib/stores/auth/model"
+import type { AuthUser } from "@/lib/stores/auth/types"
+
+type Permission =
+  | "hypothesis:create"
+  | "hypothesis:edit"
+  | "hypothesis:delete"
+  | "hypothesis:score"
+  | "hypothesis:change_status"
+  | "experiment:create"
+  | "experiment:edit"
+  | "experiment:delete"
+  | "admin:users"
+  | "admin:teams"
+  | "admin:settings"
+  | "admin:audit"
 
 interface AuthContextType {
   user: User | null
@@ -14,92 +30,126 @@ interface AuthContextType {
   hasPermission: (permission: Permission) => boolean
 }
 
-type Permission = 
-  | 'hypothesis:create'
-  | 'hypothesis:edit'
-  | 'hypothesis:delete'
-  | 'hypothesis:score'
-  | 'hypothesis:change_status'
-  | 'experiment:create'
-  | 'experiment:edit'
-  | 'experiment:delete'
-  | 'admin:users'
-  | 'admin:teams'
-  | 'admin:settings'
-  | 'admin:audit'
-
 const rolePermissions: Record<UserRole, Permission[]> = {
   admin: [
-    'hypothesis:create',
-    'hypothesis:edit',
-    'hypothesis:delete',
-    'hypothesis:score',
-    'hypothesis:change_status',
-    'experiment:create',
-    'experiment:edit',
-    'experiment:delete',
-    'admin:users',
-    'admin:teams',
-    'admin:settings',
-    'admin:audit',
+    "hypothesis:create",
+    "hypothesis:edit",
+    "hypothesis:delete",
+    "hypothesis:score",
+    "hypothesis:change_status",
+    "experiment:create",
+    "experiment:edit",
+    "experiment:delete",
+    "admin:users",
+    "admin:teams",
+    "admin:settings",
+    "admin:audit",
   ],
-  po: [
-    'hypothesis:create',
-    'hypothesis:edit',
-    'hypothesis:score',
-    'hypothesis:change_status',
-    'experiment:create',
-    'experiment:edit',
+  initiator: ["hypothesis:create"],
+  pd_manager: [
+    "hypothesis:create",
+    "hypothesis:edit",
+    "hypothesis:score",
+    "hypothesis:change_status",
+    "experiment:create",
+    "experiment:edit",
   ],
-  viewer: [],
+  analyst: ["hypothesis:score", "experiment:create", "experiment:edit"],
+  tech_lead: ["hypothesis:edit", "experiment:create", "experiment:edit"],
+  bizdev: ["hypothesis:edit", "experiment:create", "experiment:edit"],
+  committee: ["hypothesis:change_status"],
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+const mapAuthUserToUser = (authUser: AuthUser): User => ({
+  id: `user-${authUser.id}`,
+  email: authUser.email,
+  name: authUser.name,
+  role: authUser.role,
+  teamId: authUser.team_id ? `team-${authUser.team_id}` : "team-1",
+  isActive: authUser.is_active,
+  createdAt: authUser.created_at,
+  lastLoginAt: authUser.last_login_at ?? undefined,
+})
 
-  const login = useCallback(async (email: string, _password: string): Promise<boolean> => {
-    setIsLoading(true)
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Mock login - find user by email
-    const foundUser = mockUsers.find(u => u.email === email && u.isActive)
-    
-    if (foundUser) {
-      setUser(foundUser)
-      setIsLoading(false)
-      return true
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [authUser, isAuthenticated, isLoading, doLogin, doLogout, doFetchMe, updateRole] = useUnit([
+    $user,
+    $isAuthenticated,
+    $isAuthLoading,
+    loginFx,
+    logoutFx,
+    fetchMeFx,
+    setUserRole,
+  ])
+  const [isSessionCheckDone, setIsSessionCheckDone] = useState(isAuthMockMode)
+
+  useEffect(() => {
+    if (isAuthMockMode || authUser || isSessionCheckDone) {
+      return
     }
-    
-    setIsLoading(false)
-    return false
-  }, [])
+
+    void doFetchMe()
+      .catch(() => {
+        // handled by store + layout redirect
+      })
+      .finally(() => {
+        setIsSessionCheckDone(true)
+      })
+  }, [authUser, doFetchMe, isSessionCheckDone])
+
+  useEffect(() => {
+    if (authUser && !isSessionCheckDone) {
+      setIsSessionCheckDone(true)
+    }
+  }, [authUser, isSessionCheckDone])
+
+  const effectiveLoading = isLoading || (!isSessionCheckDone && !authUser)
+
+  const user = useMemo(() => (authUser ? mapAuthUserToUser(authUser) : null), [authUser])
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      try {
+        await doLogin({ email, password })
+        return true
+      } catch {
+        return false
+      }
+    },
+    [doLogin]
+  )
 
   const logout = useCallback(() => {
-    setUser(null)
-  }, [])
+    setIsSessionCheckDone(isAuthMockMode)
+    void doLogout()
+  }, [doLogout])
 
-  const switchRole = useCallback((role: UserRole) => {
-    if (user) {
-      setUser({ ...user, role })
-    }
-  }, [user])
+  const switchRole = useCallback(
+    (role: UserRole) => {
+      updateRole(role)
+    },
+    [updateRole]
+  )
 
-  const hasPermission = useCallback((permission: Permission): boolean => {
-    if (!user) return false
-    return rolePermissions[user.role].includes(permission)
-  }, [user])
+  const hasPermission = useCallback(
+    (permission: Permission): boolean => {
+      if (!user) {
+        return false
+      }
+
+      return rolePermissions[user.role].includes(permission)
+    },
+    [user]
+  )
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
-        isLoading,
+        isAuthenticated,
+        isLoading: effectiveLoading,
         login,
         logout,
         switchRole,
@@ -113,15 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider")
   }
+
   return context
 }
 
-// Mock credentials for demo
 export const mockCredentials = [
-  { email: 'admin@company.com', password: 'admin123', role: 'admin' as const },
-  { email: 'po@company.com', password: 'po123', role: 'po' as const },
-  { email: 'viewer@company.com', password: 'viewer123', role: 'viewer' as const },
+  { email: "admin@company.com", password: "admin123", role: "admin" as const },
+  { email: "po@company.com", password: "po123", role: "pd_manager" as const },
+  { email: "viewer@company.com", password: "viewer123", role: "initiator" as const },
 ]

@@ -4,3 +4,11 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Local environment files
+.env
+.env.local
+backend/.env
+backend/.env.local
+
+node_modules
