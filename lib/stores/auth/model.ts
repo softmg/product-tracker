@@ -3,6 +3,8 @@ import { apiClient } from "@/lib/api-client"
 import { mockUsers } from "@/lib/mock-data"
 import type { AuthUser } from "@/lib/stores/auth/types"
 
+const MOCK_SESSION_KEY = "mock_session"
+
 type LoginParams = {
   email: string
   password: string
@@ -72,15 +74,44 @@ export const fetchMeFx = createEffect(async (): Promise<AuthUser> => {
   return data.user
 })
 
+export const restoreMockSessionFx = createEffect(async (): Promise<AuthUser> => {
+  if (typeof window === "undefined") {
+    throw new Error("SSR: no localStorage")
+  }
+
+  const raw = localStorage.getItem(MOCK_SESSION_KEY)
+
+  if (!raw) {
+    throw new Error("No mock session stored")
+  }
+
+  return JSON.parse(raw) as AuthUser
+})
+
 export const resetAuth = createEvent()
 export const setUserRole = createEvent<AuthUser["role"]>()
 
 export const $user = createStore<AuthUser | null>(null)
   .on(loginFx.doneData, (_, user) => user)
   .on(fetchMeFx.doneData, (_, user) => user)
+  .on(restoreMockSessionFx.doneData, (_, user) => user)
   .on(logoutFx.done, () => null)
   .on(setUserRole, (user, role) => (user ? { ...user, role } : user))
   .reset(resetAuth)
+
+if (isAuthMockMode) {
+  loginFx.doneData.watch((user) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user))
+    }
+  })
+
+  logoutFx.done.watch(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(MOCK_SESSION_KEY)
+    }
+  })
+}
 
 export const $isAuthenticated = $user.map((user) => user !== null)
 export const $isAuthLoading = combine(loginFx.pending, fetchMeFx.pending, (loginPending, fetchMePending) => {

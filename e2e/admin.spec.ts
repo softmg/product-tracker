@@ -9,17 +9,16 @@ test.describe("Admin pages", () => {
   test("admin users page loads", async ({ page }) => {
     await page.goto("/admin/users")
     await expect(page).not.toHaveURL(/.*login/)
-    // Wait for the page content
-    await expect(page.locator("main")).toBeVisible({ timeout: 10000 })
+    await expect(page.locator("main").first()).toBeVisible({ timeout: 10000 })
   })
 
   test("dashboard page shows hypothesis stats", async ({ page }) => {
     await page.goto("/dashboard")
-    await expect(page.locator("main")).toBeVisible({ timeout: 10000 })
+    await expect(page.locator("main").first()).toBeVisible({ timeout: 10000 })
   })
 
   test("analytics page loads", async ({ page }) => {
     await page.goto("/analytics")
-    await expect(page.locator("main")).toBeVisible({ timeout: 10000 })
+    await expect(page.locator("main").first()).toBeVisible({ timeout: 10000 })
   })
 })

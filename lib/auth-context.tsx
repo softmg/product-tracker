@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useUnit } from "effector-react"
 import type { User, UserRole } from "./types"
-import { loginFx, logoutFx, fetchMeFx, $user, $isAuthenticated, $isAuthLoading, isAuthMockMode, setUserRole } from "@/lib/stores/auth/model"
+import { loginFx, logoutFx, fetchMeFx, restoreMockSessionFx, $user, $isAuthenticated, $isAuthLoading, isAuthMockMode, setUserRole } from "@/lib/stores/auth/model"
 import type { AuthUser } from "@/lib/stores/auth/types"
 
 type Permission =
@@ -74,19 +74,23 @@ const mapAuthUserToUser = (authUser: AuthUser): User => ({
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authUser, isAuthenticated, isLoading, doLogin, doLogout, doFetchMe, updateRole] = useUnit([
-    $user,
-    $isAuthenticated,
-    $isAuthLoading,
-    loginFx,
-    logoutFx,
-    fetchMeFx,
-    setUserRole,
-  ])
-  const [isSessionCheckDone, setIsSessionCheckDone] = useState(isAuthMockMode)
+  const [authUser, isAuthenticated, isLoading, doLogin, doLogout, doFetchMe, doRestoreMockSession, updateRole] =
+    useUnit([$user, $isAuthenticated, $isAuthLoading, loginFx, logoutFx, fetchMeFx, restoreMockSessionFx, setUserRole])
+  const [isSessionCheckDone, setIsSessionCheckDone] = useState(false)
 
   useEffect(() => {
-    if (isAuthMockMode || authUser || isSessionCheckDone) {
+    if (authUser || isSessionCheckDone) {
+      return
+    }
+
+    if (isAuthMockMode) {
+      void doRestoreMockSession()
+        .catch(() => {
+          // no stored session — user needs to log in
+        })
+        .finally(() => {
+          setIsSessionCheckDone(true)
+        })
       return
     }
 
@@ -97,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         setIsSessionCheckDone(true)
       })
-  }, [authUser, doFetchMe, isSessionCheckDone])
+  }, [authUser, doFetchMe, doRestoreMockSession, isSessionCheckDone])
 
   useEffect(() => {
     if (authUser && !isSessionCheckDone) {
@@ -122,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(() => {
-    setIsSessionCheckDone(isAuthMockMode)
+    setIsSessionCheckDone(false)
     void doLogout()
   }, [doLogout])
 
