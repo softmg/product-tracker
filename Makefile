@@ -33,7 +33,8 @@ admin-reset-password:
 		echo "Usage: make admin-reset-password ADMIN_PASSWORD=<new_password> [ADMIN_EMAIL=<admin_email>]"; \
 		exit 1; \
 	fi
-	docker compose exec \
-		-e ADMIN_EMAIL="$(ADMIN_EMAIL)" \
-		-e ADMIN_PASSWORD="$(ADMIN_PASSWORD)" \
-		backend php artisan tinker --execute='$$email = getenv("ADMIN_EMAIL"); $$password = getenv("ADMIN_PASSWORD"); $$query = \App\Models\User::query()->where("role", \App\Enums\UserRole::Admin->value); if ($$email) { $$admin = $$query->whereRaw("LOWER(email) = ?", [strtolower($$email)])->first(); } else { $$admin = $$query->orderBy("id")->first(); } if (!$$admin) { fwrite(STDERR, "Admin user not found. Run setup first or pass ADMIN_EMAIL." . PHP_EOL); exit(1); } $$admin->password = $$password; $$admin->save(); echo "Admin password updated for " . $$admin->email . PHP_EOL;'
+	@if [ -n "$(ADMIN_EMAIL)" ]; then \
+		docker compose exec backend php artisan admin:reset-password "$(ADMIN_PASSWORD)" --email="$(ADMIN_EMAIL)"; \
+	else \
+		docker compose exec backend php artisan admin:reset-password "$(ADMIN_PASSWORD)"; \
+	fi
