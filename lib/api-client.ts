@@ -1,6 +1,16 @@
 import axios from "axios"
 
-const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || ""
+export const normalizeApiBaseUrl = (value: string): string => {
+  const normalized = value.trim().replace(/\/+$/, "")
+
+  if (normalized.endsWith("/api")) {
+    return normalized.slice(0, -4)
+  }
+
+  return normalized
+}
+
+const backendBaseUrl = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL || "")
 const useMockFallback = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
 
 const apiClient = axios.create({
