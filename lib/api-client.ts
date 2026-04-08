@@ -42,7 +42,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401 && typeof window !== "undefined") {
-      window.location.href = "/login"
+      const pathname = window.location.pathname
+      const isPublicAuthPage =
+        pathname === "/login" ||
+        pathname === "/setup" ||
+        pathname === "/forgot-password" ||
+        pathname === "/reset-password"
+
+      if (!isPublicAuthPage) {
+        window.location.href = "/login"
+      }
     }
 
     return Promise.reject(error)
