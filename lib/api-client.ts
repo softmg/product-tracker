@@ -40,8 +40,24 @@ apiClient.interceptors.request.use(async (config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error?.response?.status === 401 && typeof window !== "undefined") {
+  async (error) => {
+    const status = error?.response?.status
+    const requestWithRetryFlag = error?.config as (typeof error.config & { _csrfRetried?: boolean }) | undefined
+
+    if (status === 419 && requestWithRetryFlag && !requestWithRetryFlag._csrfRetried && backendBaseUrl && !useMockFallback) {
+      requestWithRetryFlag._csrfRetried = true
+
+      await axios.get(`${backendBaseUrl}/sanctum/csrf-cookie`, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+        },
+      })
+
+      return apiClient.request(requestWithRetryFlag)
+    }
+
+    if (status === 401 && typeof window !== "undefined") {
       const pathname = window.location.pathname
       const isPublicAuthPage =
         pathname === "/login" ||
