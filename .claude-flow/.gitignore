@@ -3,5 +3,7 @@ data/
 logs/
 sessions/
 neural/
+swarm/
+daemon.pid
 *.log
 *.tmp
