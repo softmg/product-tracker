@@ -2,13 +2,43 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { allSettled, fork } from "effector"
 
 const mockTransitions = [
-  { from_status: "backlog", to_status: "scoring", label: "Send to Scoring", required_role: null, requires_comment: false },
-  { from_status: "scoring", to_status: "approved", label: "Approve", required_role: "admin", requires_comment: true },
+  {
+    id: 1,
+    from_status: "backlog",
+    to_status: "scoring",
+    allowed_roles: ["admin", "initiator"],
+    condition_type: "none",
+    condition_value: null,
+    is_active: true,
+  },
+  {
+    id: 2,
+    from_status: "scoring",
+    to_status: "go_no_go",
+    allowed_roles: ["admin"],
+    condition_type: "scoring_threshold",
+    condition_value: "7.5",
+    is_active: true,
+  },
 ]
 
 const mockNotificationSettings = [
-  { id: 1, event: "hypothesis.created", channels: ["email"], is_active: true },
-  { id: 2, event: "hypothesis.approved", channels: ["email", "slack"], is_active: false },
+  {
+    id: 1,
+    event_type: "status_change",
+    recipients: ["admin"],
+    template: "Status changed",
+    channel: "in_app",
+    is_active: true,
+  },
+  {
+    id: 2,
+    event_type: "committee_decision",
+    recipients: ["committee", "initiator"],
+    template: "Decision is ready",
+    channel: "email",
+    is_active: false,
+  },
 ]
 
 const mockGet = vi.fn()
@@ -33,7 +63,7 @@ describe("admin config store", () => {
 
     expect(scope.getState($transitions)).toHaveLength(2)
     expect(scope.getState($transitions)[0].from_status).toBe("backlog")
-    expect(scope.getState($transitions)[1].required_role).toBe("admin")
+    expect(scope.getState($transitions)[1].allowed_roles).toContain("admin")
   })
 
   it("fetchTransitionsFx calls correct API endpoint", async () => {
@@ -44,7 +74,7 @@ describe("admin config store", () => {
 
     await allSettled(fetchTransitionsFx, { scope })
 
-    expect(mockGet).toHaveBeenCalledWith("/api/v1/admin/config/transitions")
+    expect(mockGet).toHaveBeenCalledWith("/api/v1/admin/status-transitions")
   })
 
   it("fetchNotificationSettingsFx populates $notificationSettings store", async () => {
@@ -56,7 +86,7 @@ describe("admin config store", () => {
     await allSettled(fetchNotificationSettingsFx, { scope })
 
     expect(scope.getState($notificationSettings)).toHaveLength(2)
-    expect(scope.getState($notificationSettings)[0].event).toBe("hypothesis.created")
+    expect(scope.getState($notificationSettings)[0].event_type).toBe("status_change")
   })
 
   it("updateNotificationSettingFx updates setting in store", async () => {
@@ -68,8 +98,15 @@ describe("admin config store", () => {
     const scope = fork()
 
     await allSettled(fetchNotificationSettingsFx, { scope })
-    await allSettled(updateNotificationSettingFx, { scope, params: { id: 2, is_active: true } })
+    await allSettled(updateNotificationSettingFx, {
+      scope,
+      params: { id: 2, event_type: "committee_decision", is_active: true },
+    })
 
     expect(scope.getState($notificationSettings)[1].is_active).toBe(true)
+    expect(mockPut).toHaveBeenCalledWith("/api/v1/admin/notification-events/2", {
+      event_type: "committee_decision",
+      is_active: true,
+    })
   })
 })

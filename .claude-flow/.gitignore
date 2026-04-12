@@ -4,6 +4,8 @@ logs/
 sessions/
 neural/
 swarm/
+agents/
+tasks/
 metrics/
 security/
 daemon.pid

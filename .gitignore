@@ -24,6 +24,7 @@ backend/storage/
 # Tool caches
 .claw/
 .omc/
+.serena/
 .claude-flow/workflows/
 
 # Test artifacts

@@ -21,7 +21,7 @@ export interface ScoringSubmission {
 }
 
 export const fetchCriteriaFx = createEffect(async (stage: "primary" | "deep"): Promise<ScoringCriteria[]> => {
-  const { data } = await apiClient.get<{ data: ScoringCriteria[] }>("/api/v1/scoring/criteria", {
+  const { data } = await apiClient.get<{ data: ScoringCriteria[] }>("/api/v1/scoring-criteria", {
     params: { stage },
   })
   return data.data

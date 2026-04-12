@@ -2,34 +2,52 @@ import { createEffect, createStore } from "effector"
 import { apiClient } from "@/lib/api-client"
 
 export interface StatusTransition {
+  id: number
   from_status: string
   to_status: string
-  label: string
-  required_role: string | null
-  requires_comment: boolean
+  allowed_roles: string[]
+  condition_type: string
+  condition_value: string | null
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface NotificationSetting {
   id: number
-  event: string
-  channels: string[]
+  event_type: string
+  recipients: string[]
+  template: string | null
+  channel: string | null
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export const fetchTransitionsFx = createEffect(async (): Promise<StatusTransition[]> => {
-  const { data } = await apiClient.get<{ data: StatusTransition[] }>("/api/v1/admin/config/transitions")
+  const { data } = await apiClient.get<{ data: StatusTransition[] }>("/api/v1/admin/status-transitions")
   return data.data
 })
 
 export const fetchNotificationSettingsFx = createEffect(async (): Promise<NotificationSetting[]> => {
-  const { data } = await apiClient.get<{ data: NotificationSetting[] }>("/api/v1/admin/config/notifications")
+  const { data } = await apiClient.get<{ data: NotificationSetting[] }>("/api/v1/admin/notification-events")
   return data.data
 })
 
 export const updateNotificationSettingFx = createEffect(
-  async ({ id, ...params }: { id: number; channels?: string[]; is_active?: boolean }): Promise<NotificationSetting> => {
+  async ({
+    id,
+    ...params
+  }: {
+    id: number
+    recipients?: string[]
+    template?: string | null
+    channel?: string | null
+    is_active?: boolean
+    event_type?: string
+  }): Promise<NotificationSetting> => {
     const { data } = await apiClient.put<{ data: NotificationSetting }>(
-      `/api/v1/admin/config/notifications/${id}`,
+      `/api/v1/admin/notification-events/${id}`,
       params,
     )
     return data.data

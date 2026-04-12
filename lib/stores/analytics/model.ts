@@ -8,13 +8,13 @@ export interface StatusDistribution {
 
 export interface InitiatorStat {
   user_id: number
-  user_name: string
+  name: string
   count: number
 }
 
 export interface TeamStat {
   team_id: number
-  team_name: string
+  name: string
   count: number
 }
 
@@ -29,12 +29,12 @@ export const fetchStatusDistributionFx = createEffect(async (): Promise<StatusDi
 })
 
 export const fetchInitiatorStatsFx = createEffect(async (): Promise<InitiatorStat[]> => {
-  const { data } = await apiClient.get<{ data: InitiatorStat[] }>("/api/v1/analytics/by-initiator")
+  const { data } = await apiClient.get<{ data: InitiatorStat[] }>("/api/v1/analytics/initiator-stats")
   return data.data
 })
 
 export const fetchTeamStatsFx = createEffect(async (): Promise<TeamStat[]> => {
-  const { data } = await apiClient.get<{ data: TeamStat[] }>("/api/v1/analytics/by-team")
+  const { data } = await apiClient.get<{ data: TeamStat[] }>("/api/v1/analytics/team-stats")
   return data.data
 })
 

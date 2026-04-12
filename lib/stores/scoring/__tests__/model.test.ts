@@ -46,7 +46,7 @@ describe("scoring store", () => {
 
     await allSettled(fetchCriteriaFx, { scope, params: "deep" })
 
-    expect(mockGet).toHaveBeenCalledWith("/api/v1/scoring/criteria", { params: { stage: "deep" } })
+    expect(mockGet).toHaveBeenCalledWith("/api/v1/scoring-criteria", { params: { stage: "deep" } })
   })
 
   it("submitScoringFx updates $currentScoring store", async () => {
