@@ -4,6 +4,8 @@ logs/
 sessions/
 neural/
 swarm/
+metrics/
+security/
 daemon.pid
 *.log
 *.tmp
