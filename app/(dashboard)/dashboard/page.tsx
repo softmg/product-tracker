@@ -2,29 +2,22 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { 
-  Bell, 
-  RefreshCw, 
-  CheckCircle2, 
-  AlertTriangle, 
+import {
+  Bell,
+  RefreshCw,
+  CheckCircle2,
   AlertCircle,
   ChevronRight,
   Clock,
   Plus,
   FileText,
   ArrowRight,
-  Vote,
-  Calculator,
-  ClipboardCheck,
-  Send,
-  Activity
+  Activity,
 } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -34,19 +27,49 @@ import {
 } from "@/components/ui/select"
 import { useUnit } from "effector-react"
 import { useAuth } from "@/lib/auth-context"
-import {
-  mockHypotheses,
-  mockExperiments,
-  mockAuditLog,
-  mockSLAConfigs,
-  statusDisplayInfo,
-  getUserById,
-  roleLabels,
-} from "@/lib/mock-data"
-import type { Hypothesis, HypothesisStatus, AuditLogEntry, UserRole } from "@/lib/types"
+import type { HypothesisStatus, UserRole } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/hypotheses/status-badge"
-import { $hypotheses, $isLoading, fetchHypothesesFx } from "@/lib/stores/hypotheses/model"
+import { $hypotheses, fetchHypothesesFx } from "@/lib/stores/hypotheses/model"
+import type { ApiHypothesisList } from "@/lib/stores/hypotheses/types"
+
+type DashboardHypothesis = {
+  id: number
+  code: string
+  title: string
+  status: HypothesisStatus
+  ownerId: number | null
+  teamId: number | null
+  scoringPrimary: number | null
+  slaDeadline: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+type DashboardActivityAction = "create" | "update" | "status_change"
+
+type DashboardActivity = {
+  id: string
+  action: DashboardActivityAction
+  userName: string
+  hypothesisId: number
+  hypothesisCode: string
+  timestamp: string
+  oldStatus?: HypothesisStatus
+  newStatus?: HypothesisStatus
+}
+
+type ActivityFilter = "all" | DashboardActivityAction
+
+const hypothesisStatuses: HypothesisStatus[] = [
+  "backlog",
+  "scoring",
+  "deep_dive",
+  "experiment",
+  "analysis",
+  "go_no_go",
+  "done",
+]
 
 // Russian status labels
 const statusLabelsRu: Record<HypothesisStatus, string> = {
@@ -70,115 +93,110 @@ const roleLabelsRu: Record<UserRole, string> = {
   committee: "Комитет",
 }
 
-// Action hints for different statuses
-function getActionHint(hypothesis: Hypothesis, userRole: UserRole): string | null {
+const statusBarClassByStatus: Record<HypothesisStatus, string> = {
+  backlog: "bg-slate-500",
+  scoring: "bg-purple-500",
+  deep_dive: "bg-blue-500",
+  experiment: "bg-cyan-500",
+  analysis: "bg-amber-500",
+  go_no_go: "bg-orange-500",
+  done: "bg-emerald-500",
+}
+
+function isHypothesisStatus(value: string): value is HypothesisStatus {
+  return hypothesisStatuses.includes(value as HypothesisStatus)
+}
+
+function parsePrefixedId(value: string | undefined, prefix: string): number | null {
+  if (!value || !value.startsWith(prefix)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(value.slice(prefix.length), 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function toDashboardHypothesis(item: ApiHypothesisList): DashboardHypothesis {
+  return {
+    id: item.id,
+    code: item.code,
+    title: item.title,
+    status: isHypothesisStatus(item.status) ? item.status : "backlog",
+    ownerId: item.owner?.id ?? null,
+    teamId: item.team?.id ?? null,
+    scoringPrimary: item.scoring_primary,
+    slaDeadline: item.sla_deadline,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  }
+}
+
+function getActionHint(hypothesis: DashboardHypothesis, userRole: UserRole): string | null {
   switch (hypothesis.status) {
     case "backlog":
       return "Отправь в скоринг"
     case "scoring":
-      if (!hypothesis.scoring?.totalScore) {
+      if (!hypothesis.scoringPrimary) {
         return "Заполни скоринг"
       }
       return "Переведи в Deep Dive"
     case "deep_dive":
-      const stages = hypothesis.deepDive?.stages || []
-      const completedStages = stages.filter(s => s.isCompleted).length
-      const totalStages = stages.length || 7
-      if (completedStages < totalStages) {
-        return `Заполни чек-лист (${completedStages}/${totalStages})`
-      }
-      return "Завершить Deep Dive"
+      return "Заполни чек-лист"
     case "experiment":
-      const experiments = mockExperiments.filter(e => e.hypothesisId === hypothesis.id)
-      const runningExp = experiments.filter(e => e.status === "running")
-      if (runningExp.length > 0) {
-        return "Внеси результаты"
-      }
-      return "Создай эксперимент"
+      return "Внеси результаты"
     case "analysis":
       return "Подготовь к питчу"
     case "go_no_go":
-      if (userRole === "admin") {
-        return "Ожидает голосования"
-      }
-      return "На голосовании ПК"
+      return userRole === "admin" ? "Ожидает голосования" : "На голосовании ПК"
     default:
       return null
   }
 }
 
-// SLA calculation
-function getSLAStatus(hypothesis: Hypothesis): { status: "ok" | "warning" | "overdue"; daysLeft?: number; daysOverdue?: number } {
-  if (!hypothesis.deadline) {
-    // Calculate based on status SLA config
-    const slaConfig = mockSLAConfigs.find(s => s.status === hypothesis.status)
-    if (!slaConfig || !slaConfig.isActive) {
-      return { status: "ok" }
-    }
-    const statusDate = new Date(hypothesis.updatedAt)
-    const now = new Date()
-    const daysInStatus = Math.floor((now.getTime() - statusDate.getTime()) / (1000 * 60 * 60 * 24))
-    const daysLeft = slaConfig.limitDays - daysInStatus
-
-    if (daysLeft < 0) {
-      return { status: "overdue", daysOverdue: Math.abs(daysLeft) }
-    }
-    if (daysLeft <= slaConfig.warningDays) {
-      return { status: "warning", daysLeft }
-    }
-    return { status: "ok", daysLeft }
+function getSLAStatus(hypothesis: DashboardHypothesis): {
+  status: "ok" | "warning" | "overdue"
+  daysLeft?: number
+  daysOverdue?: number
+} {
+  if (!hypothesis.slaDeadline) {
+    return { status: "ok" }
   }
 
-  const deadline = new Date(hypothesis.deadline)
+  const deadline = new Date(hypothesis.slaDeadline)
   const now = new Date()
   const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
+
   if (daysLeft < 0) {
     return { status: "overdue", daysOverdue: Math.abs(daysLeft) }
   }
+
   if (daysLeft <= 2) {
     return { status: "warning", daysLeft }
   }
-  return { status: "ok", daysLeft }
-}
 
-// Format date for display
-function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+  return { status: "ok", daysLeft }
 }
 
 function formatDateTime(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleDateString("ru-RU", { 
-    day: "numeric", 
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
     month: "short",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
   })
 }
 
-// Event type labels
-const eventTypeLabels: Record<string, string> = {
+const eventTypeLabels: Record<DashboardActivityAction, string> = {
   create: "Создание",
   update: "Изменение",
-  delete: "Удаление",
   status_change: "Смена статуса",
 }
 
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth()
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastRefresh, setLastRefresh] = useState(new Date())
-
-  // Load hypotheses from Effector store
-  const storeHypotheses = useUnit($hypotheses)
-  const storeLoading = useUnit($isLoading)
-
-  useEffect(() => {
-    void fetchHypothesesFx({})
-  }, [])
-  const [activityFilter, setActivityFilter] = useState<string>("all")
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all")
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     actions: false,
     sla: false,
@@ -186,84 +204,84 @@ export default function DashboardPage() {
     deadlines: false,
   })
 
-  // Auto-refresh every 60 seconds
+  const storeHypotheses = useUnit($hypotheses)
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLastRefresh(new Date())
-    }, 60000)
-    return () => clearInterval(interval)
+    void fetchHypothesesFx({})
   }, [])
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true)
-    setTimeout(() => {
-      setLastRefresh(new Date())
+    void fetchHypothesesFx({}).finally(() => {
       setIsRefreshing(false)
-    }, 500)
+    })
   }, [])
 
-  // Get user's hypotheses (owned or participating)
+  const dashboardHypotheses = useMemo(() => storeHypotheses.map(toDashboardHypothesis), [storeHypotheses])
+  const currentUserId = parsePrefixedId(user?.id, "user-")
+  const currentTeamId = parsePrefixedId(user?.teamId, "team-")
+
   const userHypotheses = useMemo(() => {
     if (!user) return []
-    return mockHypotheses.filter(h => 
-      h.ownerId === user.id || 
-      h.teamId === user.teamId
-    )
-  }, [user])
 
-  // Get hypotheses awaiting action
+    return dashboardHypotheses.filter(
+      (h) =>
+        (currentUserId !== null && h.ownerId === currentUserId) ||
+        (currentTeamId !== null && h.teamId === currentTeamId),
+    )
+  }, [currentTeamId, currentUserId, dashboardHypotheses, user])
+
   const awaitingAction = useMemo(() => {
     if (!user) return []
+
     return userHypotheses
-      .filter(h => h.status !== "done")
-      .map(h => ({
+      .filter((h) => h.status !== "done")
+      .map((h) => ({
         hypothesis: h,
-        action: getActionHint(h, user.role)
+        action: getActionHint(h, user.role),
       }))
-      .filter(item => item.action !== null)
+      .filter((item) => item.action !== null)
       .slice(0, expandedSections.actions ? 20 : 5)
-  }, [userHypotheses, user, expandedSections.actions])
+  }, [expandedSections.actions, user, userHypotheses])
 
   const totalAwaitingAction = useMemo(() => {
     if (!user) return 0
-    return userHypotheses
-      .filter(h => h.status !== "done")
-      .map(h => ({
-        hypothesis: h,
-        action: getActionHint(h, user.role)
-      }))
-      .filter(item => item.action !== null).length
-  }, [userHypotheses, user])
 
-  // Get SLA violations and warnings
+    return userHypotheses
+      .filter((h) => h.status !== "done")
+      .map((h) => ({
+        hypothesis: h,
+        action: getActionHint(h, user.role),
+      }))
+      .filter((item) => item.action !== null).length
+  }, [user, userHypotheses])
+
   const slaIssues = useMemo(() => {
     return userHypotheses
-      .filter(h => h.status !== "done")
-      .map(h => ({
+      .filter((h) => h.status !== "done")
+      .map((h) => ({
         hypothesis: h,
-        sla: getSLAStatus(h)
+        sla: getSLAStatus(h),
       }))
-      .filter(item => item.sla.status !== "ok")
+      .filter((item) => item.sla.status !== "ok")
       .sort((a, b) => {
-        // Overdue first, then warnings
         if (a.sla.status === "overdue" && b.sla.status === "warning") return -1
         if (a.sla.status === "warning" && b.sla.status === "overdue") return 1
         return 0
       })
       .slice(0, expandedSections.sla ? 20 : 5)
-  }, [userHypotheses, expandedSections.sla])
+  }, [expandedSections.sla, userHypotheses])
 
   const totalSlaIssues = useMemo(() => {
     return userHypotheses
-      .filter(h => h.status !== "done")
-      .map(h => ({
+      .filter((h) => h.status !== "done")
+      .map((h) => ({
         hypothesis: h,
-        sla: getSLAStatus(h)
+        sla: getSLAStatus(h),
       }))
-      .filter(item => item.sla.status !== "ok").length
+      .filter((item) => item.sla.status !== "ok").length
   }, [userHypotheses])
 
-  // Get hypotheses by status for chart — prefer Effector store data (real API or mock)
   const hypothesesByStatus = useMemo(() => {
     const counts: Record<HypothesisStatus, number> = {
       backlog: 0,
@@ -274,123 +292,129 @@ export default function DashboardPage() {
       go_no_go: 0,
       done: 0,
     }
-    const source = storeHypotheses.length > 0 ? storeHypotheses : userHypotheses
-    source.forEach((h) => {
-      const s = h.status as HypothesisStatus
-      if (s in counts) counts[s]++
+
+    userHypotheses.forEach((h) => {
+      counts[h.status]++
     })
+
     return counts
-  }, [storeHypotheses, userHypotheses])
+  }, [userHypotheses])
 
   const maxStatusCount = useMemo(() => {
     return Math.max(...Object.values(hypothesesByStatus), 1)
   }, [hypothesesByStatus])
 
-  // Get activity for last 7 days
+  const activitySource = useMemo<DashboardActivity[]>(() => {
+    return userHypotheses
+      .flatMap((hypothesis) => {
+        const events: DashboardActivity[] = [
+          {
+            id: `create-${hypothesis.id}`,
+            action: "create",
+            userName: user?.name || "Пользователь",
+            hypothesisId: hypothesis.id,
+            hypothesisCode: hypothesis.code,
+            timestamp: hypothesis.createdAt,
+          },
+        ]
+
+        if (hypothesis.updatedAt !== hypothesis.createdAt) {
+          events.push({
+            id: `update-${hypothesis.id}`,
+            action: "update",
+            userName: user?.name || "Пользователь",
+            hypothesisId: hypothesis.id,
+            hypothesisCode: hypothesis.code,
+            timestamp: hypothesis.updatedAt,
+          })
+        }
+
+        return events
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [user?.name, userHypotheses])
+
+  const activityFeed = useMemo(() => {
+    const filtered =
+      activityFilter === "all" ? activitySource : activitySource.filter((event) => event.action === activityFilter)
+
+    return filtered.slice(0, expandedSections.activity ? 20 : 5)
+  }, [activityFilter, activitySource, expandedSections.activity])
+
+  const totalActivityFeed = useMemo(() => {
+    if (activityFilter === "all") {
+      return activitySource.length
+    }
+
+    return activitySource.filter((event) => event.action === activityFilter).length
+  }, [activityFilter, activitySource])
+
   const activityByDay = useMemo(() => {
     const days: { date: string; count: number }[] = []
     const now = new Date()
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now)
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split("T")[0]
-      const count = mockAuditLog.filter(log => {
-        const logDate = new Date(log.timestamp).toISOString().split("T")[0]
-        return logDate === dateStr && log.userId === user?.id
+
+      const count = activitySource.filter((event) => {
+        const eventDate = new Date(event.timestamp).toISOString().split("T")[0]
+        return eventDate === dateStr
       }).length
+
       days.push({
         date: date.toLocaleDateString("ru-RU", { weekday: "short" }),
-        count
+        count,
       })
     }
+
     return days
-  }, [user])
+  }, [activitySource])
 
   const maxActivityCount = useMemo(() => {
-    return Math.max(...activityByDay.map(d => d.count), 1)
+    return Math.max(...activityByDay.map((d) => d.count), 1)
   }, [activityByDay])
 
-  // Get activity feed
-  const activityFeed = useMemo(() => {
-    const userHypothesisIds = userHypotheses.map(h => h.id)
-    let filtered = mockAuditLog
-      .filter(log => 
-        log.entityType === "hypothesis" && 
-        userHypothesisIds.includes(log.entityId)
-      )
-    
-    if (activityFilter !== "all") {
-      filtered = filtered.filter(log => log.action === activityFilter)
-    }
-
-    return filtered
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, expandedSections.activity ? 20 : 5)
-  }, [userHypotheses, activityFilter, expandedSections.activity])
-
-  const totalActivityFeed = useMemo(() => {
-    const userHypothesisIds = userHypotheses.map(h => h.id)
-    let filtered = mockAuditLog
-      .filter(log => 
-        log.entityType === "hypothesis" && 
-        userHypothesisIds.includes(log.entityId)
-      )
-    
-    if (activityFilter !== "all") {
-      filtered = filtered.filter(log => log.action === activityFilter)
-    }
-    return filtered.length
-  }, [userHypotheses, activityFilter])
-
-  // Get upcoming deadlines (experiments & deep dive tasks)
   const upcomingDeadlines = useMemo(() => {
-    const deadlines: { 
-      type: "experiment" | "deep_dive"
-      title: string
-      hypothesisCode: string
-      hypothesisId: string
-      date: string
-      daysLeft: number
-    }[] = []
+    return userHypotheses
+      .filter((hypothesis) => hypothesis.status !== "done" && hypothesis.slaDeadline)
+      .map((hypothesis) => {
+        const deadlineDate = new Date(hypothesis.slaDeadline as string)
+        const daysLeft = Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 
-    // Experiments
-    mockExperiments
-      .filter(exp => {
-        const hyp = userHypotheses.find(h => h.id === exp.hypothesisId)
-        return hyp && exp.status === "running"
-      })
-      .forEach(exp => {
-        const hyp = mockHypotheses.find(h => h.id === exp.hypothesisId)
-        if (!hyp) return
-        const endDate = new Date(exp.endDate)
-        const now = new Date()
-        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        if (daysLeft >= 0 && daysLeft <= 7) {
-          deadlines.push({
-            type: "experiment",
-            title: exp.title,
-            hypothesisCode: hyp.code,
-            hypothesisId: hyp.id,
-            date: exp.endDate,
-            daysLeft
-          })
+        return {
+          type: "deep_dive" as const,
+          title: hypothesis.title,
+          hypothesisCode: hypothesis.code,
+          hypothesisId: String(hypothesis.id),
+          date: hypothesis.slaDeadline as string,
+          daysLeft,
         }
       })
-
-    return deadlines
+      .filter((deadline) => deadline.daysLeft >= 0 && deadline.daysLeft <= 7)
       .sort((a, b) => a.daysLeft - b.daysLeft)
       .slice(0, expandedSections.deadlines ? 20 : 5)
-  }, [userHypotheses, expandedSections.deadlines])
+  }, [expandedSections.deadlines, userHypotheses])
 
-  // Notification count (mock)
-  const notificationCount = 3
+  const totalUpcomingDeadlines = useMemo(() => {
+    return userHypotheses.filter((hypothesis) => {
+      if (hypothesis.status === "done" || !hypothesis.slaDeadline) {
+        return false
+      }
 
-  // Current date
+      const daysLeft = Math.ceil((new Date(hypothesis.slaDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      return daysLeft >= 0 && daysLeft <= 7
+    }).length
+  }, [userHypotheses])
+
+  const notificationCount = activitySource.length
+
   const currentDate = new Date().toLocaleDateString("ru-RU", {
     weekday: "long",
     day: "numeric",
     month: "long",
-    year: "numeric"
+    year: "numeric",
   })
 
   if (!user) return null
@@ -400,12 +424,9 @@ export default function DashboardPage() {
       <Header breadcrumbs={[{ title: "Дашборд" }]} />
       <main className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          {/* Header with greeting */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Привет, {user.name.split(" ")[0]}!
-              </h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Привет, {user.name.split(" ")[0]}!</h1>
               <p className="text-muted-foreground">
                 {roleLabelsRu[user.role]} &middot; {currentDate}
               </p>
@@ -417,12 +438,7 @@ export default function DashboardPage() {
                   {notificationCount}
                 </Link>
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
                 <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
                 Обновить
               </Button>
@@ -437,21 +453,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Block 1: Awaiting Action */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">Ожидают моего действия</CardTitle>
-                  <CardDescription>
-                    Гипотезы, требующие вашего внимания прямо сейчас
-                  </CardDescription>
+                  <CardDescription>Гипотезы, требующие вашего внимания прямо сейчас</CardDescription>
                 </div>
                 {totalAwaitingAction > 5 && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
-                    onClick={() => setExpandedSections(prev => ({ ...prev, actions: !prev.actions }))}
+                    onClick={() => setExpandedSections((prev) => ({ ...prev, actions: !prev.actions }))}
                   >
                     {expandedSections.actions ? "Свернуть" : `+ Ещё ${totalAwaitingAction - 5}`}
                   </Button>
@@ -467,21 +480,17 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-2">
                   {awaitingAction.map(({ hypothesis, action }) => (
-                    <Link 
+                    <Link
                       key={hypothesis.id}
                       href={`/hypotheses/${hypothesis.id}`}
                       className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm text-muted-foreground">
-                          {hypothesis.code}
-                        </span>
+                        <span className="font-mono text-sm text-muted-foreground">{hypothesis.code}</span>
                         <StatusBadge status={hypothesis.status} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-primary">
-                          {action}
-                        </span>
+                        <span className="text-sm font-medium text-primary">{action}</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </Link>
@@ -491,22 +500,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Block 2: SLA Issues */}
           {slaIssues.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">SLA-нарушения и приближения</CardTitle>
-                    <CardDescription>
-                      Гипотезы с нарушением или приближением дедлайна
-                    </CardDescription>
+                    <CardDescription>Гипотезы с нарушением или приближением дедлайна</CardDescription>
                   </div>
                   {totalSlaIssues > 5 && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
-                      onClick={() => setExpandedSections(prev => ({ ...prev, sla: !prev.sla }))}
+                      onClick={() => setExpandedSections((prev) => ({ ...prev, sla: !prev.sla }))}
                     >
                       {expandedSections.sla ? "Свернуть" : `+ Ещё ${totalSlaIssues - 5}`}
                     </Button>
@@ -516,34 +522,35 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-2">
                   {slaIssues.map(({ hypothesis, sla }) => (
-                    <Link 
+                    <Link
                       key={hypothesis.id}
                       href={`/hypotheses/${hypothesis.id}`}
                       className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-3">
-                        <span className={cn(
-                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                          sla.status === "overdue" 
-                            ? "bg-destructive text-destructive-foreground"
-                            : "bg-yellow-500 text-white"
-                        )}>
+                        <span
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                            sla.status === "overdue"
+                              ? "bg-destructive text-destructive-foreground"
+                              : "bg-yellow-500 text-white",
+                          )}
+                        >
                           {sla.status === "overdue" ? "!!" : "!"}
                         </span>
-                        <span className="font-mono text-sm text-muted-foreground">
-                          {hypothesis.code}
-                        </span>
+                        <span className="font-mono text-sm text-muted-foreground">{hypothesis.code}</span>
                         <StatusBadge status={hypothesis.status} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-sm font-medium",
-                          sla.status === "overdue" ? "text-destructive" : "text-yellow-600 dark:text-yellow-400"
-                        )}>
-                          {sla.status === "overdue" 
+                        <span
+                          className={cn(
+                            "text-sm font-medium",
+                            sla.status === "overdue" ? "text-destructive" : "text-yellow-600 dark:text-yellow-400",
+                          )}
+                        >
+                          {sla.status === "overdue"
                             ? `Просрочено на ${sla.daysOverdue} дн.`
-                            : `Осталось ${sla.daysLeft} дн.`
-                          }
+                            : `Осталось ${sla.daysLeft} дн.`}
                         </span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
@@ -554,19 +561,15 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {/* Block 3: Two columns */}
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Left: Hypotheses by status */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Мои гипотезы по статусам</CardTitle>
-                <CardDescription>
-                  Всего: {userHypotheses.length} гипотез
-                </CardDescription>
+                <CardDescription>Всего: {userHypotheses.length} гипотез</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {(Object.keys(statusLabelsRu) as HypothesisStatus[]).map((status) => {
+                  {hypothesisStatuses.map((status) => {
                     const count = hypothesesByStatus[status]
                     const percentage = (count / maxStatusCount) * 100
                     return (
@@ -576,11 +579,8 @@ export default function DashboardPage() {
                           <span className="font-medium">{count}</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div 
-                            className={cn(
-                              "h-full rounded-full transition-all",
-                              statusDisplayInfo[status]?.colorClass?.split(" ")[0] || "bg-primary"
-                            )}
+                          <div
+                            className={cn("h-full rounded-full transition-all", statusBarClassByStatus[status])}
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
@@ -591,23 +591,20 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Right: Activity over 7 days */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Активность за 7 дней</CardTitle>
-                <CardDescription>
-                  Ваши действия в системе
-                </CardDescription>
+                <CardDescription>Ваши действия в системе</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex h-32 items-end justify-between gap-2">
                   {activityByDay.map((day, index) => (
                     <div key={index} className="flex flex-1 flex-col items-center gap-1">
-                      <div 
+                      <div
                         className="w-full rounded-t bg-primary transition-all"
-                        style={{ 
+                        style={{
                           height: `${(day.count / maxActivityCount) * 100}%`,
-                          minHeight: day.count > 0 ? "8px" : "2px"
+                          minHeight: day.count > 0 ? "8px" : "2px",
                         }}
                       />
                       <span className="text-xs text-muted-foreground">{day.date}</span>
@@ -616,26 +613,21 @@ export default function DashboardPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Activity className="h-4 w-4" />
-                  <span>
-                    Всего: {activityByDay.reduce((sum, d) => sum + d.count, 0)} действий
-                  </span>
+                  <span>Всего: {activityByDay.reduce((sum, d) => sum + d.count, 0)} действий</span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Block 4: Activity feed */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">Лента изменений</CardTitle>
-                  <CardDescription>
-                    События по вашим гипотезам
-                  </CardDescription>
+                  <CardDescription>События по вашим гипотезам</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Select value={activityFilter} onValueChange={setActivityFilter}>
+                  <Select value={activityFilter} onValueChange={(value) => setActivityFilter(value as ActivityFilter)}>
                     <SelectTrigger className="w-[150px]">
                       <SelectValue placeholder="Фильтр" />
                     </SelectTrigger>
@@ -647,10 +639,10 @@ export default function DashboardPage() {
                     </SelectContent>
                   </Select>
                   {totalActivityFeed > 5 && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
-                      onClick={() => setExpandedSections(prev => ({ ...prev, activity: !prev.activity }))}
+                      onClick={() => setExpandedSections((prev) => ({ ...prev, activity: !prev.activity }))}
                     >
                       {expandedSections.activity ? "Свернуть" : `+ Ещё ${totalActivityFeed - 5}`}
                     </Button>
@@ -660,87 +652,66 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {activityFeed.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-4">
-                  Нет событий
-                </p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Нет событий</p>
               ) : (
                 <div className="space-y-3">
-                  {activityFeed.map((log) => {
-                    const hypothesis = mockHypotheses.find(h => h.id === log.entityId)
-                    return (
-                      <div 
-                        key={log.id}
-                        className="flex items-start justify-between rounded-lg border p-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-full bg-muted p-1.5">
-                            {log.action === "create" && <Plus className="h-3 w-3" />}
-                            {log.action === "update" && <FileText className="h-3 w-3" />}
-                            {log.action === "status_change" && <ArrowRight className="h-3 w-3" />}
-                            {log.action === "delete" && <AlertCircle className="h-3 w-3" />}
-                          </div>
-                          <div>
-                            <p className="text-sm">
-                              <span className="font-medium">{log.userName}</span>
-                              {" "}
-                              <span className="text-muted-foreground">
-                                {eventTypeLabels[log.action] || log.action}
-                              </span>
-                              {" "}
-                              {hypothesis && (
-                                <Link 
-                                  href={`/hypotheses/${hypothesis.id}`}
-                                  className="font-medium text-primary hover:underline"
-                                >
-                                  {hypothesis.code}
-                                </Link>
-                              )}
-                            </p>
-                            {log.action === "status_change" && log.changes.status && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {statusLabelsRu[log.changes.status.old as HypothesisStatus] || String(log.changes.status.old)}
-                                {" → "}
-                                {statusLabelsRu[log.changes.status.new as HypothesisStatus] || String(log.changes.status.new)}
-                              </p>
-                            )}
-                          </div>
+                  {activityFeed.map((log) => (
+                    <div key={log.id} className="flex items-start justify-between rounded-lg border p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-full bg-muted p-1.5">
+                          {log.action === "create" && <Plus className="h-3 w-3" />}
+                          {log.action === "update" && <FileText className="h-3 w-3" />}
+                          {log.action === "status_change" && <ArrowRight className="h-3 w-3" />}
+                          {log.action !== "create" && log.action !== "update" && log.action !== "status_change" && (
+                            <AlertCircle className="h-3 w-3" />
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTime(log.timestamp)}
-                          </span>
-                          {hypothesis && (
-                            <Link href={`/hypotheses/${hypothesis.id}`}>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm">
+                            <span className="font-medium">{log.userName}</span>{" "}
+                            <span className="text-muted-foreground">{eventTypeLabels[log.action]}</span>{" "}
+                            <Link
+                              href={`/hypotheses/${log.hypothesisId}`}
+                              className="font-medium text-primary hover:underline"
+                            >
+                              {log.hypothesisCode}
                             </Link>
+                          </p>
+                          {log.action === "status_change" && log.oldStatus && log.newStatus && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {statusLabelsRu[log.oldStatus]} {" → "} {statusLabelsRu[log.newStatus]}
+                            </p>
                           )}
                         </div>
                       </div>
-                    )
-                  })}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{formatDateTime(log.timestamp)}</span>
+                        <Link href={`/hypotheses/${log.hypothesisId}`}>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Block 5: Upcoming deadlines */}
           {upcomingDeadlines.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">Ближайшие дедлайны (7 дней)</CardTitle>
-                    <CardDescription>
-                      Эксперименты и задачи с приближающимся дедлайном
-                    </CardDescription>
+                    <CardDescription>Гипотезы с приближающимся дедлайном</CardDescription>
                   </div>
-                  {upcomingDeadlines.length > 5 && (
-                    <Button 
-                      variant="ghost" 
+                  {totalUpcomingDeadlines > 5 && (
+                    <Button
+                      variant="ghost"
                       size="sm"
-                      onClick={() => setExpandedSections(prev => ({ ...prev, deadlines: !prev.deadlines }))}
+                      onClick={() => setExpandedSections((prev) => ({ ...prev, deadlines: !prev.deadlines }))}
                     >
-                      {expandedSections.deadlines ? "Свернуть" : `+ Ещё ${upcomingDeadlines.length - 5}`}
+                      {expandedSections.deadlines ? "Свернуть" : `+ Ещё ${totalUpcomingDeadlines - 5}`}
                     </Button>
                   )}
                 </div>
@@ -748,7 +719,7 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-2">
                   {upcomingDeadlines.map((deadline, index) => (
-                    <Link 
+                    <Link
                       key={`${deadline.hypothesisId}-${index}`}
                       href={`/hypotheses/${deadline.hypothesisId}`}
                       className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
@@ -757,19 +728,16 @@ export default function DashboardPage() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="text-sm font-medium">{deadline.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {deadline.hypothesisCode} &middot; {deadline.type === "experiment" ? "Эксперимент" : "Deep Dive"}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{deadline.hypothesisCode} &middot; Дедлайн SLA</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={deadline.daysLeft <= 2 ? "destructive" : "secondary"}>
-                          {deadline.daysLeft === 0 
-                            ? "Сегодня" 
-                            : deadline.daysLeft === 1 
+                          {deadline.daysLeft === 0
+                            ? "Сегодня"
+                            : deadline.daysLeft === 1
                               ? "Завтра"
-                              : `${deadline.daysLeft} дн.`
-                          }
+                              : `${deadline.daysLeft} дн.`}
                         </Badge>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>

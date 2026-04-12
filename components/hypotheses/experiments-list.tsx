@@ -25,8 +25,16 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { ExperimentCard } from "./experiment-card"
 import { useAuth } from "@/lib/auth-context"
-import type { Experiment, ExperimentMetric, ExperimentLink } from "@/lib/types"
-import { experimentTypeLabels } from "@/lib/mock-data"
+import type { Experiment, ExperimentMetric, ExperimentLink, ExperimentType } from "@/lib/types"
+
+const experimentTypeLabels: Record<ExperimentType, string> = {
+  a_b_test: "A/B тест",
+  survey: "Опрос",
+  interview: "Интервью",
+  prototype: "Прототип",
+  mvp: "MVP",
+  other: "Другое",
+}
 
 interface ExperimentsListProps {
   experiments: Experiment[]

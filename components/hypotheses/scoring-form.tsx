@@ -11,8 +11,83 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { AlertTriangle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { mockScoringCriteria } from "@/lib/mock-data"
 import type { HypothesisScoring, ScoringCriterion } from "@/lib/types"
+
+const scoringCriteriaConfig: ScoringCriterion[] = [
+  {
+    id: "crit-tam",
+    name: "TAM",
+    description: "Total Addressable Market - общий объём рынка",
+    inputType: "number",
+    minValue: 0,
+    maxValue: 999_999_999,
+    weight: 0.15,
+    isActive: true,
+    thresholds: [100_000, 500_000, 1_000_000, 5_000_000],
+  },
+  {
+    id: "crit-som",
+    name: "SOM",
+    description: "Serviceable Obtainable Market - достижимая доля рынка",
+    inputType: "number",
+    minValue: 0,
+    maxValue: 999_999_999,
+    weight: 0.15,
+    isActive: true,
+    thresholds: [10_000, 50_000, 100_000, 500_000],
+  },
+  {
+    id: "crit-market-potential",
+    name: "Рыночный потенциал",
+    description: "Общая оценка рыночного потенциала гипотезы",
+    inputType: "slider",
+    minValue: 1,
+    maxValue: 5,
+    weight: 0.2,
+    isActive: true,
+  },
+  {
+    id: "crit-competency-fit",
+    name: "Соответствие компетенциям",
+    description: "Насколько гипотеза соответствует текущим компетенциям команды",
+    inputType: "slider",
+    minValue: 1,
+    maxValue: 5,
+    weight: 0.15,
+    isActive: true,
+  },
+  {
+    id: "crit-resource-cost",
+    name: "Ресурсоёмкость проверки",
+    description: "Оценка затрат ресурсов на проверку гипотезы (5 = минимальная ресурсоёмкость)",
+    inputType: "slider",
+    minValue: 1,
+    maxValue: 5,
+    weight: 0.15,
+    isActive: true,
+  },
+  {
+    id: "crit-strategic-fit",
+    name: "Стратегический fit",
+    description: "Соответствие стратегическим целям компании",
+    inputType: "slider",
+    minValue: 1,
+    maxValue: 5,
+    weight: 0.2,
+    isActive: true,
+  },
+  {
+    id: "crit-stop-factor",
+    name: "Стоп-факторы",
+    description: "Наличие критических факторов, блокирующих гипотезу (если отмечено - итоговый балл = 0)",
+    inputType: "checkbox",
+    minValue: 0,
+    maxValue: 1,
+    weight: 0,
+    isActive: true,
+    isStopFactor: true,
+  },
+]
 
 interface ScoringFormProps {
   initialScoring?: HypothesisScoring
@@ -37,7 +112,7 @@ function formatNumber(num: number): string {
 }
 
 export function ScoringForm({ initialScoring, onSave, readOnly = false }: ScoringFormProps) {
-  const criteria = mockScoringCriteria.filter(c => c.isActive)
+  const criteria = scoringCriteriaConfig.filter(c => c.isActive)
   
   const [scores, setScores] = useState<Record<string, number>>(() => {
     if (initialScoring?.criteriaScores) {

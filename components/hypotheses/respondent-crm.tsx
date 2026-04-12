@@ -64,15 +64,33 @@ import {
   ArrowLeft
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Respondent, RespondentStatus, RespondentPain, PainSummary } from "@/lib/types"
-import { 
-  getRespondentsByHypothesisId, 
-  getPainSummaryByHypothesisId, 
-  getCompletedInterviewsCount,
-  respondentStatusConfig,
-  mockUsers,
-  MIN_INTERVIEWS_REQUIRED
-} from "@/lib/mock-data"
+import type { Respondent, RespondentStatus, RespondentPain, PainSummary, User } from "@/lib/types"
+
+const MIN_INTERVIEWS_REQUIRED = 5
+
+const respondentStatusConfig: Record<string, { label: string; color: string }> = {
+  new: { label: "Новый", color: "bg-slate-100 text-slate-700" },
+  in_contact: { label: "В контакте", color: "bg-blue-100 text-blue-700" },
+  scheduled: { label: "Запланирован", color: "bg-amber-100 text-amber-700" },
+  completed: { label: "Завершён", color: "bg-green-100 text-green-700" },
+  refused: { label: "Отказ", color: "bg-red-100 text-red-700" },
+}
+
+const emptyUsers: User[] = []
+
+const getRespondentsByHypothesisId = (_hypothesisId: string): Respondent[] => {
+  return []
+}
+
+const getPainSummaryByHypothesisId = (_hypothesisId: string): PainSummary[] => {
+  return []
+}
+
+const getCompletedInterviewsCount = (_hypothesisId: string): number => {
+  return 0
+}
+
+const mockUsers = emptyUsers
 
 interface RespondentCRMProps {
   hypothesisId: string

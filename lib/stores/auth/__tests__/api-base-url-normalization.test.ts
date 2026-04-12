@@ -3,13 +3,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 const mockApiRequest = vi.fn()
 const mockAxiosGet = vi.fn()
 
+const requestInterceptorUse = vi.fn((handler) => {
+  ;(globalThis as { __apiRequestHandler?: typeof handler }).__apiRequestHandler = handler
+})
+
 vi.mock("axios", () => {
   return {
     default: {
       create: () => ({
         request: mockApiRequest,
         interceptors: {
-          request: { use: vi.fn() },
+          request: { use: requestInterceptorUse },
           response: {
             use: vi.fn((_, errorHandler) => {
               ;(globalThis as { __apiErrorHandler?: typeof errorHandler }).__apiErrorHandler = errorHandler
@@ -27,6 +31,11 @@ describe("api-client helpers", () => {
     vi.resetModules()
     vi.clearAllMocks()
     delete (globalThis as { __apiErrorHandler?: unknown }).__apiErrorHandler
+    delete (globalThis as { __apiRequestHandler?: unknown }).__apiRequestHandler
+
+    vi.stubGlobal("document", {
+      cookie: "XSRF-TOKEN=test-token",
+    })
   })
 
   it("normalizes plain host unchanged", async () => {

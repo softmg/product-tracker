@@ -11,8 +11,14 @@ import type {
   UpdateHypothesisParams,
 } from "./types"
 
-export const isHypothesisMockMode =
-  process.env.NEXT_PUBLIC_USE_MOCKS === "true" || !process.env.NEXT_PUBLIC_API_URL
+const useHypothesisMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
+const hypothesisApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
+
+if (!useHypothesisMocks && !hypothesisApiUrl) {
+  throw new Error("NEXT_PUBLIC_API_URL must be set when NEXT_PUBLIC_USE_MOCKS is false (hypotheses store)")
+}
+
+export const isHypothesisMockMode = useHypothesisMocks
 
 // Map mock hypothesis to API list shape
 const mapMockToApiList = (h: (typeof mockHypotheses)[number]): ApiHypothesisList => ({

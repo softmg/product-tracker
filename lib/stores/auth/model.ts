@@ -10,8 +10,14 @@ type LoginParams = {
   password: string
 }
 
-export const isAuthMockMode =
-  process.env.NEXT_PUBLIC_USE_MOCKS === "true" || !process.env.NEXT_PUBLIC_API_URL
+const useAuthMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
+const authApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
+
+if (!useAuthMocks && !authApiUrl) {
+  throw new Error("NEXT_PUBLIC_API_URL must be set when NEXT_PUBLIC_USE_MOCKS is false (auth store)")
+}
+
+export const isAuthMockMode = useAuthMocks
 
 const parseMockId = (value: string, prefix: string): number | null => {
   if (!value.startsWith(prefix)) {

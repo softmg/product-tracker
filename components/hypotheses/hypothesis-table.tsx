@@ -33,10 +33,11 @@ import { StatusBadge } from "./status-badge"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import type { Hypothesis } from "@/lib/types"
-import { getUserById, getTeamById } from "@/lib/mock-data"
 
 interface HypothesisTableProps {
   hypotheses: Hypothesis[]
+  ownerNamesById?: Record<string, string>
+  teamNamesById?: Record<string, string>
   onDelete?: (id: string) => void
 }
 
@@ -45,7 +46,12 @@ type SortDirection = "asc" | "desc"
 
 const ITEMS_PER_PAGE = 10
 
-export function HypothesisTable({ hypotheses, onDelete }: HypothesisTableProps) {
+export function HypothesisTable({
+  hypotheses,
+  ownerNamesById = {},
+  teamNamesById = {},
+  onDelete,
+}: HypothesisTableProps) {
   const { hasPermission } = useAuth()
   const [sortField, setSortField] = useState<SortField>("updatedAt")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
@@ -79,12 +85,12 @@ export function HypothesisTable({ hypotheses, onDelete }: HypothesisTableProps) 
           bValue = b.status
           break
         case "team":
-          aValue = getTeamById(a.teamId)?.name || ""
-          bValue = getTeamById(b.teamId)?.name || ""
+          aValue = teamNamesById[a.teamId] || ""
+          bValue = teamNamesById[b.teamId] || ""
           break
         case "owner":
-          aValue = getUserById(a.ownerId)?.name || ""
-          bValue = getUserById(b.ownerId)?.name || ""
+          aValue = ownerNamesById[a.ownerId] || ""
+          bValue = ownerNamesById[b.ownerId] || ""
           break
         case "score":
           aValue = a.scoring?.totalScore || 0
@@ -100,7 +106,7 @@ export function HypothesisTable({ hypotheses, onDelete }: HypothesisTableProps) 
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1
       return 0
     })
-  }, [hypotheses, sortField, sortDirection])
+  }, [hypotheses, sortField, sortDirection, ownerNamesById, teamNamesById])
 
   const totalPages = Math.ceil(sortedHypotheses.length / ITEMS_PER_PAGE)
   const paginatedHypotheses = sortedHypotheses.slice(
@@ -206,9 +212,9 @@ export function HypothesisTable({ hypotheses, onDelete }: HypothesisTableProps) 
               </TableRow>
             ) : (
               paginatedHypotheses.map((hypothesis) => {
-                const team = getTeamById(hypothesis.teamId)
-                const owner = getUserById(hypothesis.ownerId)
-                
+                const teamName = teamNamesById[hypothesis.teamId]
+                const ownerName = ownerNamesById[hypothesis.ownerId]
+
                 return (
                   <TableRow key={hypothesis.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
@@ -225,12 +231,8 @@ export function HypothesisTable({ hypotheses, onDelete }: HypothesisTableProps) 
                     <TableCell>
                       <StatusBadge status={hypothesis.status} />
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {team?.name || "-"}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {owner?.name || "-"}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{teamName || "-"}</TableCell>
+                    <TableCell className="text-sm">{ownerName || "-"}</TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       {hypothesis.scoring?.totalScore || "-"}
                     </TableCell>

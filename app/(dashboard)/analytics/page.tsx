@@ -50,7 +50,6 @@ import {
 } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { mockHypotheses, mockTeams, mockUsers } from "@/lib/mock-data"
 
 // KPI Data
 const kpiData = {
@@ -176,6 +175,20 @@ const stuckHypotheses = [
   { id: "HYP-071", team: "BizDev", status: "Deep Dive", days: 29, limit: 15, owner: "kozlov@smg.ru" },
   { id: "HYP-088", team: "Platform", status: "Эксперимент", days: 22, limit: 10, owner: "nikitin@smg.ru" },
   { id: "HYP-094", team: "Продукт", status: "Скоринг", days: 11, limit: 5, owner: "petrov@smg.ru" },
+]
+
+const teamOptions = [
+  { value: "Продукт", label: "Продукт" },
+  { value: "Growth", label: "Growth" },
+  { value: "Platform", label: "Platform" },
+  { value: "BizDev", label: "BizDev" },
+]
+
+const initiatorOptions = [
+  { value: "Maria Petrova", label: "Maria Petrova" },
+  { value: "Elena Kozlova", label: "Elena Kozlova" },
+  { value: "Alexey Ivanov", label: "Alexey Ivanov" },
+  { value: "Ivan Sidorov", label: "Ivan Sidorov" },
 ]
 
 export default function AnalyticsPage() {
@@ -349,8 +362,8 @@ export default function AnalyticsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Все</SelectItem>
-                        {mockTeams.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        {teamOptions.map((teamOption) => (
+                          <SelectItem key={teamOption.value} value={teamOption.value}>{teamOption.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -363,8 +376,8 @@ export default function AnalyticsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Все</SelectItem>
-                        {mockUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        {initiatorOptions.map((initiatorOption) => (
+                          <SelectItem key={initiatorOption.value} value={initiatorOption.value}>{initiatorOption.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

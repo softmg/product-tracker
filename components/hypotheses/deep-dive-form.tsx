@@ -29,9 +29,90 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { useAuth } from "@/lib/auth-context"
-import { getActiveDeepDiveStages, getRequiredDeepDiveStages, roleLabels } from "@/lib/mock-data"
-import type { DeepDiveData, DeepDiveStageData, DeepDiveComment, DeepDiveFile } from "@/lib/types"
+import type { DeepDiveData, DeepDiveStageData, DeepDiveComment, DeepDiveFile, DeepDiveStageConfig, UserRole } from "@/lib/types"
 import { RespondentCRM } from "./respondent-crm"
+
+const roleLabels: Record<UserRole, string> = {
+  admin: "Administrator",
+  initiator: "Initiator",
+  pd_manager: "Product Discovery Manager",
+  analyst: "Analyst",
+  tech_lead: "Tech Lead",
+  bizdev: "BizDev",
+  committee: "Committee",
+}
+
+const deepDiveStageConfigs: DeepDiveStageConfig[] = [
+  {
+    id: "stage-1",
+    name: "Рыночное и конкурентное исследование",
+    description: "Бенчмаркинг: анализ рынка и конкурентов",
+    order: 1,
+    isRequired: true,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-2",
+    name: "Поиск респондентов",
+    description: "CRM-таблица контактов для интервью",
+    order: 2,
+    isRequired: true,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-3",
+    name: "Интервью",
+    description: "Минимум 3-5 интервью с тегами болей",
+    order: 3,
+    isRequired: true,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-4",
+    name: "CJM / JTBD",
+    description: "Customer Journey Map или Jobs To Be Done анализ",
+    order: 4,
+    isRequired: false,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-5",
+    name: "Финансовое моделирование",
+    description: "LTV, CAC, маржа и другие финансовые показатели",
+    order: 5,
+    isRequired: true,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-6",
+    name: "Оценка трудозатрат",
+    description: "Оценка ресурсов: бэкенд, фронт, аналитика",
+    order: 6,
+    isRequired: true,
+    responsibleRole: "pd_manager",
+    isActive: true,
+  },
+  {
+    id: "stage-7",
+    name: "Паспорт гипотезы",
+    description: "Заполняется автоматически на основе собранных данных",
+    order: 7,
+    isRequired: true,
+    responsibleRole: "admin",
+    isActive: true,
+  },
+]
+
+const getActiveDeepDiveStages = (): DeepDiveStageConfig[] =>
+  deepDiveStageConfigs.filter((stage) => stage.isActive).sort((a, b) => a.order - b.order)
+
+const getRequiredDeepDiveStages = (): DeepDiveStageConfig[] =>
+  deepDiveStageConfigs.filter((stage) => stage.isActive && stage.isRequired).sort((a, b) => a.order - b.order)
 
 interface DeepDiveFormProps {
   hypothesisId?: string

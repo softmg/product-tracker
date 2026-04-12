@@ -25,3 +25,6 @@ tsconfig.tsbuildinfo
 playwright-report/
 test-results/
 backend/test-results/
+
+# Bishx planning sessions
+.bishx-plan/

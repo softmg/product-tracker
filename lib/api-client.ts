@@ -13,6 +13,22 @@ export const normalizeApiBaseUrl = (value: string): string => {
 const backendBaseUrl = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL || "")
 const useMockFallback = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
 
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === "undefined") {
+    return null
+  }
+
+  const cookie = document.cookie
+    .split("; ")
+    .find((item) => item.startsWith(`${name}=`))
+
+  if (!cookie) {
+    return null
+  }
+
+  return decodeURIComponent(cookie.split("=").slice(1).join("="))
+}
+
 const apiClient = axios.create({
   baseURL: backendBaseUrl,
   withCredentials: true,
@@ -33,6 +49,13 @@ apiClient.interceptors.request.use(async (config) => {
         Accept: "application/json",
       },
     })
+
+    const xsrfToken = getCookieValue("XSRF-TOKEN")
+
+    if (xsrfToken) {
+      config.headers = config.headers ?? {}
+      config.headers["X-XSRF-TOKEN"] = xsrfToken
+    }
   }
 
   return config

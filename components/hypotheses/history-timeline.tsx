@@ -14,8 +14,21 @@ import {
   CheckCircle2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { AuditLogEntry } from "@/lib/types"
-import { statusDisplayInfo } from "@/lib/mock-data"
+import type { AuditLogEntry, HypothesisStatus } from "@/lib/types"
+
+type StatusInfo = {
+  label: string
+}
+
+const statusDisplayInfo: Record<HypothesisStatus, StatusInfo> = {
+  backlog: { label: "Идея" },
+  scoring: { label: "Скоринг" },
+  deep_dive: { label: "Deep Dive" },
+  experiment: { label: "Эксперимент" },
+  analysis: { label: "Анализ" },
+  go_no_go: { label: "Питч" },
+  done: { label: "Архив" },
+}
 
 interface HistoryTimelineProps {
   entries: AuditLogEntry[]
@@ -88,11 +101,11 @@ export function HistoryTimeline({ entries }: HistoryTimelineProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm">Changed status from</span>
           <Badge variant="outline" className="text-xs">
-            {statusDisplayInfo[oldStatus]?.label || oldStatus}
+            {statusDisplayInfo[oldStatus as HypothesisStatus]?.label || oldStatus}
           </Badge>
           <ArrowRight className="h-3 w-3 text-muted-foreground" />
           <Badge variant="outline" className="text-xs">
-            {statusDisplayInfo[newStatus]?.label || newStatus}
+            {statusDisplayInfo[newStatus as HypothesisStatus]?.label || newStatus}
           </Badge>
         </div>
       )

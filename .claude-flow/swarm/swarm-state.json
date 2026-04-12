@@ -1,0 +1,23 @@
+{
+  "swarms": {
+    "swarm-1775988615792-yn4pfm": {
+      "swarmId": "swarm-1775988615792-yn4pfm",
+      "topology": "hierarchical-mesh",
+      "maxAgents": 5,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical-mesh",
+        "maxAgents": 5,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-04-12T10:10:15.792Z",
+      "updatedAt": "2026-04-12T10:10:15.792Z"
+    }
+  },
+  "version": "3.0.0"
+}

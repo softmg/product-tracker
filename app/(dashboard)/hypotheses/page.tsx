@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth-context"
-import { mockTeams, mockUsers, statusDisplayInfo } from "@/lib/mock-data"
 import type { Hypothesis, HypothesisStatus } from "@/lib/types"
 import {
   $hypotheses,
@@ -32,6 +31,30 @@ import type { ApiHypothesisList } from "@/lib/stores/hypotheses/types"
 
 type ViewMode = "table" | "kanban"
 
+const allStatuses: HypothesisStatus[] = [
+  "backlog",
+  "scoring",
+  "deep_dive",
+  "experiment",
+  "analysis",
+  "go_no_go",
+  "done",
+]
+
+const statusLabelsRu: Record<HypothesisStatus, string> = {
+  backlog: "Идея",
+  scoring: "Скоринг",
+  deep_dive: "Deep Dive",
+  experiment: "Эксперимент",
+  analysis: "Анализ",
+  go_no_go: "Питч",
+  done: "Архив",
+}
+
+function isHypothesisStatus(value: string): value is HypothesisStatus {
+  return allStatuses.includes(value as HypothesisStatus)
+}
+
 /** Bridge: map API list item to the Hypothesis shape expected by UI components */
 function apiToHypothesis(h: ApiHypothesisList): Hypothesis {
   return {
@@ -39,15 +62,22 @@ function apiToHypothesis(h: ApiHypothesisList): Hypothesis {
     code: h.code,
     title: h.title,
     description: "",
-    status: h.status as HypothesisStatus,
+    status: isHypothesisStatus(h.status) ? h.status : "backlog",
     teamId: h.team ? String(h.team.id) : "",
     ownerId: h.owner ? String(h.owner.id) : "",
     deadline: h.sla_deadline ?? undefined,
     createdAt: h.created_at,
     updatedAt: h.updated_at,
-    scoring: h.scoring_primary != null
-      ? { criteriaScores: {}, stopFactorTriggered: false, totalScore: h.scoring_primary, scoredAt: "", scoredBy: "" }
-      : undefined,
+    scoring:
+      h.scoring_primary != null
+        ? {
+            criteriaScores: {},
+            stopFactorTriggered: false,
+            totalScore: h.scoring_primary,
+            scoredAt: "",
+            scoredBy: "",
+          }
+        : undefined,
   }
 }
 
@@ -62,50 +92,82 @@ export default function HypothesesPage() {
   const hypothesesRaw = useUnit($hypotheses)
   const isLoading = useUnit($isLoading)
 
-  // Load view preference from localStorage
   useEffect(() => {
     const savedView = localStorage.getItem("hypotheses-view-mode") as ViewMode | null
-    if (savedView && (savedView === "table" || savedView === "kanban")) {
+    if (savedView === "table" || savedView === "kanban") {
       setViewMode(savedView)
     }
   }, [])
 
-  // Initial fetch
   useEffect(() => {
     void fetchHypothesesFx({})
   }, [])
 
-  // Re-fetch from API when filters change (API mode only — mock mode filters client-side)
   useEffect(() => {
     if (!isHypothesisMockMode) {
       void fetchHypothesesFx({
-        status: statusFilter !== "all" ? statusFilter : undefined,
+        status: viewMode === "table" && statusFilter !== "all" ? statusFilter : undefined,
         search: searchQuery || undefined,
         team_id: teamFilter !== "all" ? Number(teamFilter) : undefined,
       })
     }
-  }, [statusFilter, searchQuery, teamFilter])
+  }, [statusFilter, searchQuery, teamFilter, viewMode])
 
   const hypotheses = useMemo(() => hypothesesRaw.map(apiToHypothesis), [hypothesesRaw])
 
-  // Client-side filtering (used in mock mode; API mode relies on server filtering)
-  const filteredHypotheses = useMemo(() => {
-    if (!isHypothesisMockMode) return hypotheses
+  const availableTeams = useMemo(() => {
+    const teamsMap = new Map<string, string>()
 
+    for (const item of hypothesesRaw) {
+      if (item.team) {
+        teamsMap.set(String(item.team.id), item.team.name || `Команда ${item.team.id}`)
+      }
+    }
+
+    return Array.from(teamsMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+  }, [hypothesesRaw])
+
+  const owners = useMemo(() => {
+    const ownersMap = new Map<string, string>()
+
+    for (const item of hypothesesRaw) {
+      if (item.owner) {
+        ownersMap.set(String(item.owner.id), item.owner.name || item.owner.email || `Пользователь ${item.owner.id}`)
+      }
+    }
+
+    return Array.from(ownersMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+  }, [hypothesesRaw])
+
+  useEffect(() => {
+    if (teamFilter !== "all" && !availableTeams.some((team) => team.id === teamFilter)) {
+      setTeamFilter("all")
+    }
+  }, [availableTeams, teamFilter])
+
+  useEffect(() => {
+    if (ownerFilter !== "all" && !owners.some((owner) => owner.id === ownerFilter)) {
+      setOwnerFilter("all")
+    }
+  }, [ownerFilter, owners])
+
+  const filteredHypotheses = useMemo(() => {
     return hypotheses.filter((h) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
-        if (
-          !h.title.toLowerCase().includes(query) &&
-          !h.code.toLowerCase().includes(query) &&
-          !h.description.toLowerCase().includes(query)
-        ) {
+        if (!h.title.toLowerCase().includes(query) && !h.code.toLowerCase().includes(query)) {
           return false
         }
       }
+
       if (viewMode === "table" && statusFilter !== "all" && h.status !== statusFilter) return false
       if (teamFilter !== "all" && h.teamId !== teamFilter) return false
       if (ownerFilter !== "all" && h.ownerId !== ownerFilter) return false
+
       return true
     })
   }, [hypotheses, searchQuery, statusFilter, teamFilter, ownerFilter, viewMode])
@@ -123,7 +185,6 @@ export default function HypothesesPage() {
     setSearchQuery("")
   }
 
-  // Save view preference to localStorage
   const handleViewChange = (value: string) => {
     if (value === "table" || value === "kanban") {
       setViewMode(value)
@@ -131,22 +192,16 @@ export default function HypothesesPage() {
     }
   }
 
-  // Owners list from current hypothesis data
-  const owners = mockUsers.filter((u) => hypotheses.some((h) => h.ownerId === u.id))
-
   return (
     <>
       <Header breadcrumbs={[{ title: "Гипотезы" }]} />
 
       <main className="flex-1 overflow-auto">
         <div className="container pl-8 pr-8 py-6 space-y-6">
-          {/* Page header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Гипотезы</h1>
-              <p className="text-sm text-muted-foreground">
-                Управление и отслеживание продуктовых гипотез
-              </p>
+              <p className="text-sm text-muted-foreground">Управление и отслеживание продуктовых гипотез</p>
             </div>
             {hasPermission("hypothesis:create") && (
               <Button asChild>
@@ -158,7 +213,6 @@ export default function HypothesesPage() {
             )}
           </div>
 
-          {/* Filters */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 items-center gap-2">
               <div className="relative flex-1 max-w-sm">
@@ -184,13 +238,13 @@ export default function HypothesesPage() {
               {viewMode === "table" && (
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as HypothesisStatus | "all")}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder="Статус" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все статусы</SelectItem>
-                    {Object.entries(statusDisplayInfo).map(([key, info]) => (
-                      <SelectItem key={key} value={key}>
-                        {info.label}
+                    {allStatuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {statusLabelsRu[status]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -198,12 +252,12 @@ export default function HypothesesPage() {
               )}
 
               <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Team" />
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Команда" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все команды</SelectItem>
-                  {mockTeams.map((team) => (
+                  {availableTeams.map((team) => (
                     <SelectItem key={team.id} value={team.id}>
                       {team.name}
                     </SelectItem>
@@ -212,8 +266,8 @@ export default function HypothesesPage() {
               </Select>
 
               <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Owner" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Владелец" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все владельцы</SelectItem>
@@ -235,7 +289,6 @@ export default function HypothesesPage() {
                 </Button>
               )}
 
-              {/* View toggle */}
               <div className="border-l pl-2 ml-1">
                 <ToggleGroup type="single" value={viewMode} onValueChange={handleViewChange}>
                   <ToggleGroupItem value="table" aria-label="Таблица" title="Таблица">
@@ -249,7 +302,6 @@ export default function HypothesesPage() {
             </div>
           </div>
 
-          {/* Results count */}
           {isLoading ? (
             <Skeleton className="h-5 w-48" />
           ) : (
@@ -266,7 +318,6 @@ export default function HypothesesPage() {
             </div>
           )}
 
-          {/* Table / Kanban View */}
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (

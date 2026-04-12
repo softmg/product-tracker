@@ -32,9 +32,24 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import type { Experiment, ExperimentMetric } from "@/lib/types"
-import { experimentTypeLabels, experimentStatusLabels } from "@/lib/mock-data"
+import type { Experiment, ExperimentMetric, ExperimentStatus, ExperimentType } from "@/lib/types"
 import { cn } from "@/lib/utils"
+
+const experimentTypeLabels: Record<ExperimentType, string> = {
+  a_b_test: "A/B тест",
+  survey: "Опрос",
+  interview: "Интервью",
+  prototype: "Прототип",
+  mvp: "MVP",
+  other: "Другое",
+}
+
+const experimentStatusLabels: Record<ExperimentStatus, string> = {
+  planned: "Запланирован",
+  running: "Выполняется",
+  completed: "Завершён",
+  cancelled: "Отменён",
+}
 
 interface ExperimentCardProps {
   experiment: Experiment

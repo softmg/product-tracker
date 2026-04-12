@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { useUnit } from "effector-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,26 +19,107 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
-import { mockTeams, mockUsers } from "@/lib/mock-data"
-import { createHypothesisFx } from "@/lib/stores/hypotheses/model"
+import { $hypotheses, createHypothesisFx, fetchHypothesesFx } from "@/lib/stores/hypotheses/model"
+
+type Priority = "low" | "medium" | "high"
+
+const parsePrefixedId = (value: string | undefined, prefix: string): string | null => {
+  if (!value || !value.startsWith(prefix)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(value.slice(prefix.length), 10)
+  return Number.isNaN(parsed) ? null : String(parsed)
+}
 
 export default function NewHypothesisPage() {
   const router = useRouter()
   const { hasPermission, user } = useAuth()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const hypotheses = useUnit($hypotheses)
 
-  // Redirect if no permission
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [priority, setPriority] = useState<Priority>("medium")
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("")
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("")
+
   if (!hasPermission("hypothesis:create")) {
     router.push("/hypotheses")
     return null
   }
 
+  useEffect(() => {
+    void fetchHypothesesFx({ per_page: 200 })
+  }, [])
+
+  const teamOptions = useMemo(() => {
+    const map = new Map<string, string>()
+
+    for (const hypothesis of hypotheses) {
+      if (hypothesis.team) {
+        map.set(String(hypothesis.team.id), hypothesis.team.name || `Команда ${hypothesis.team.id}`)
+      }
+    }
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+  }, [hypotheses])
+
+  const ownerOptions = useMemo(() => {
+    const map = new Map<string, string>()
+
+    for (const hypothesis of hypotheses) {
+      if (hypothesis.owner) {
+        map.set(
+          String(hypothesis.owner.id),
+          hypothesis.owner.name || hypothesis.owner.email || `Пользователь ${hypothesis.owner.id}`,
+        )
+      }
+    }
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+  }, [hypotheses])
+
+  const defaultTeamId = parsePrefixedId(user?.teamId, "team-")
+  const defaultOwnerId = parsePrefixedId(user?.id, "user-")
+
+  useEffect(() => {
+    if (selectedTeamId) {
+      return
+    }
+
+    if (defaultTeamId && teamOptions.some((team) => team.id === defaultTeamId)) {
+      setSelectedTeamId(defaultTeamId)
+      return
+    }
+
+    if (teamOptions.length > 0) {
+      setSelectedTeamId(teamOptions[0].id)
+    }
+  }, [defaultTeamId, selectedTeamId, teamOptions])
+
+  useEffect(() => {
+    if (selectedOwnerId) {
+      return
+    }
+
+    if (defaultOwnerId && ownerOptions.some((owner) => owner.id === defaultOwnerId)) {
+      setSelectedOwnerId(defaultOwnerId)
+      return
+    }
+
+    if (ownerOptions.length > 0) {
+      setSelectedOwnerId(ownerOptions[0].id)
+    }
+  }, [defaultOwnerId, ownerOptions, selectedOwnerId])
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    const form = e.currentTarget
-    const data = new FormData(form)
+    const data = new FormData(e.currentTarget)
 
     try {
       const result = await createHypothesisFx({
@@ -45,28 +127,30 @@ export default function NewHypothesisPage() {
         problem: String(data.get("problem") ?? "") || undefined,
         solution: String(data.get("solution") ?? "") || undefined,
         target_audience: String(data.get("audience") ?? "") || undefined,
-        priority: (data.get("priority") as "low" | "medium" | "high") || undefined,
+        priority,
+        team_id: selectedTeamId ? Number(selectedTeamId) : undefined,
       })
+
       router.push(`/hypotheses/${result.id}`)
     } catch {
       setIsSubmitting(false)
     }
   }
 
-  const owners = mockUsers.filter(u => u.role !== "initiator" && u.isActive)
+  const teamSelectValue = selectedTeamId || "none"
+  const ownerSelectValue = selectedOwnerId || "none"
 
   return (
     <>
-      <Header 
+      <Header
         breadcrumbs={[
           { title: "Гипотезы", href: "/hypotheses" },
-          { title: "Новая гипотеза" }
-        ]} 
+          { title: "Новая гипотеза" },
+        ]}
       />
-      
+
       <main className="flex-1 overflow-auto">
         <div className="container max-w-3xl pl-8 pr-8 py-6 space-y-6">
-          {/* Back button */}
           <Button variant="ghost" size="sm" asChild className="-ml-2">
             <Link href="/hypotheses">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -74,7 +158,6 @@ export default function NewHypothesisPage() {
             </Link>
           </Button>
 
-          {/* Header */}
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Создать гипотезу</h1>
             <p className="text-sm text-muted-foreground">
@@ -82,17 +165,13 @@ export default function NewHypothesisPage() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit}>
             <Card>
               <CardHeader>
                 <CardTitle>Данные гипотезы</CardTitle>
-                <CardDescription>
-                  Укажите основную информацию о вашей гипотезе
-                </CardDescription>
+                <CardDescription>Укажите основную информацию о вашей гипотезе</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Название *</Label>
                   <Input
@@ -101,12 +180,9 @@ export default function NewHypothesisPage() {
                     placeholder="например, Добавление социального входа увеличит конверсию"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Чёткая, проверяемая формулировка вашей гипотезы
-                  </p>
+                  <p className="text-xs text-muted-foreground">Чёткая, проверяемая формулировка вашей гипотезы</p>
                 </div>
 
-                {/* Problem / Customer Pain */}
                 <div className="space-y-2">
                   <Label htmlFor="problem">Проблема / боль клиента *</Label>
                   <Textarea
@@ -118,7 +194,6 @@ export default function NewHypothesisPage() {
                   />
                 </div>
 
-                {/* Solution Statement */}
                 <div className="space-y-2">
                   <Label htmlFor="solution">Формулировка решения «Мы верим, что...» *</Label>
                   <Textarea
@@ -130,18 +205,16 @@ export default function NewHypothesisPage() {
                   />
                 </div>
 
-                {/* Key Assumptions */}
                 <div className="space-y-2">
                   <Label htmlFor="assumptions">Ключевые предположения *</Label>
-                  <Textarea 
-                    id="assumptions" 
+                  <Textarea
+                    id="assumptions"
                     placeholder="Какие предположения лежат в основе вашей гипотезы?"
                     rows={2}
                     required
                   />
                 </div>
 
-                {/* Target Audience */}
                 <div className="space-y-2">
                   <Label htmlFor="audience">Целевая аудитория *</Label>
                   <Textarea
@@ -153,15 +226,13 @@ export default function NewHypothesisPage() {
                   />
                 </div>
 
-                {/* Priority */}
                 <div className="space-y-2">
                   <Label htmlFor="priority">Приоритет *</Label>
-                  <Select defaultValue="medium">
+                  <Select value={priority} onValueChange={(value) => setPriority(value as Priority)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите приоритет" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="critical">Критический</SelectItem>
                       <SelectItem value="high">Высокий</SelectItem>
                       <SelectItem value="medium">Средний</SelectItem>
                       <SelectItem value="low">Низкий</SelectItem>
@@ -169,42 +240,51 @@ export default function NewHypothesisPage() {
                   </Select>
                 </div>
 
-                {/* Team & Owner */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="team">Команда *</Label>
-                    <Select defaultValue={user?.teamId}>
+                    <Select value={teamSelectValue} onValueChange={(value) => setSelectedTeamId(value === "none" ? "" : value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите команду" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockTeams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
+                        {teamOptions.length > 0 ? (
+                          teamOptions.map((team) => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none">Нет доступных команд</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="owner">Владелец *</Label>
-                    <Select defaultValue={user?.id}>
+                    <Select
+                      value={ownerSelectValue}
+                      onValueChange={(value) => setSelectedOwnerId(value === "none" ? "" : value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите владельца" />
                       </SelectTrigger>
                       <SelectContent>
-                        {owners.map((owner) => (
-                          <SelectItem key={owner.id} value={owner.id}>
-                            {owner.name}
-                          </SelectItem>
-                        ))}
+                        {ownerOptions.length > 0 ? (
+                          ownerOptions.map((owner) => (
+                            <SelectItem key={owner.id} value={owner.id}>
+                              {owner.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none">Нет доступных владельцев</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" asChild>
                     <Link href="/hypotheses">Отмена</Link>
