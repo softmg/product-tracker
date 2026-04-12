@@ -29,6 +29,83 @@ const mockMeta = {
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 
+describe("hypotheses store env resolution", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+
+    vi.doMock("@/lib/api-client", () => ({
+      apiClient: { get: mockGet, post: mockPost, put: vi.fn(), delete: vi.fn() },
+    }))
+  })
+
+  it("uses mocks when NEXT_PUBLIC_USE_MOCKS=true", async () => {
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "true")
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "")
+
+    vi.doMock("@/lib/mock-data", () => ({
+      mockHypotheses: [
+        {
+          id: "hyp-1",
+          code: "HYP-001",
+          title: "Mock hypothesis",
+          status: "backlog",
+          ownerId: null,
+          teamId: null,
+          scoring: null,
+          deadline: null,
+          createdAt: "2026-04-06T00:00:00Z",
+          updatedAt: "2026-04-06T00:00:00Z",
+          description: null,
+        },
+      ],
+    }))
+
+    const { fetchHypothesesFx, isHypothesisMockMode } = await import("../model")
+    const scope = fork()
+
+    const result = await allSettled(fetchHypothesesFx, {
+      scope,
+      params: {},
+    })
+
+    expect(isHypothesisMockMode).toBe(true)
+    expect(result.status).toBe("done")
+    expect(mockGet).not.toHaveBeenCalled()
+  })
+
+  it("uses API when NEXT_PUBLIC_USE_MOCKS=false and API URL exists", async () => {
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+
+    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [] }))
+    mockGet.mockResolvedValueOnce({ data: { data: [mockHypothesis], meta: mockMeta } })
+
+    const { fetchHypothesesFx, isHypothesisMockMode } = await import("../model")
+    const scope = fork()
+
+    const result = await allSettled(fetchHypothesesFx, {
+      scope,
+      params: {},
+    })
+
+    expect(isHypothesisMockMode).toBe(false)
+    expect(result.status).toBe("done")
+    expect(mockGet).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws when NEXT_PUBLIC_USE_MOCKS=false and API URL is missing", async () => {
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "")
+
+    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [] }))
+
+    await expect(import("../model")).rejects.toThrow(
+      "NEXT_PUBLIC_API_URL must be set when NEXT_PUBLIC_USE_MOCKS is false (hypotheses store)",
+    )
+  })
+})
+
 describe("hypotheses store", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
