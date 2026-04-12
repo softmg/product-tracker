@@ -17,9 +17,14 @@ node_modules
 .next/
 tsconfig.tsbuildinfo
 
+# Security scanner noise exclusions
+backend/vendor/
+backend/storage/
+
 # Tool caches
 .claw/
 .omc/
+.claude-flow/workflows/
 
 # Test artifacts
 playwright-report/

@@ -80,6 +80,8 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      // False-positive audit note: this only injects CSS variables generated from trusted local chart config,
+      // not user-provided HTML/content.
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(

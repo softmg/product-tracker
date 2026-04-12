@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { allSettled, fork } from "effector"
+import { TEST_NEW_USER_PASSWORD } from "@/lib/test-credentials"
 
 const mockUser = {
   id: 1,
@@ -50,7 +51,7 @@ describe("admin users store", () => {
     await allSettled(fetchUsersFx, { scope })
     await allSettled(createUserFx, {
       scope,
-      params: { name: "Bob", email: "bob@company.com", password: "secret", role: "initiator" },
+      params: { name: "Bob", email: "bob@company.com", password: TEST_NEW_USER_PASSWORD, role: "initiator" },
     })
 
     expect(scope.getState($users)).toHaveLength(2)

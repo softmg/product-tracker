@@ -1,0 +1,17 @@
+# Dependencies and build output
+node_modules/
+.next/
+
+# Generated test artifacts
+playwright-report/
+test-results/
+
+# Backend generated/vendor paths
+backend/vendor/
+backend/storage/
+backend/bootstrap/cache/
+backend/public/build/
+backend/public/hot/
+
+# Local runtime state
+.claude-flow/workflows/

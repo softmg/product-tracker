@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { allSettled, fork } from "effector"
+import { INVALID_AUTH_CREDENTIALS, TEST_USERS } from "@/lib/test-credentials"
 
 const mockAuthUser = {
   id: 1,
@@ -50,7 +51,7 @@ describe("auth store env resolution", () => {
 
     const result = await allSettled(loginFx, {
       scope,
-      params: { email: "mock@company.com", password: "password" },
+      params: { email: "mock@company.com", password: TEST_USERS.admin.password }
     })
 
     expect(isAuthMockMode).toBe(true)
@@ -70,7 +71,7 @@ describe("auth store env resolution", () => {
 
     const result = await allSettled(loginFx, {
       scope,
-      params: { email: "admin@company.com", password: "password" },
+      params: { email: TEST_USERS.admin.email, password: TEST_USERS.admin.password },
     })
 
     expect(isAuthMockMode).toBe(false)
@@ -115,7 +116,10 @@ describe("auth store (real API mode)", () => {
     const { loginFx, $user, $isAuthenticated } = await import("../model")
     const scope = fork()
 
-    await allSettled(loginFx, { scope, params: { email: "admin@company.com", password: "password" } })
+    await allSettled(loginFx, {
+      scope,
+      params: { email: TEST_USERS.admin.email, password: TEST_USERS.admin.password },
+    })
 
     expect(scope.getState($user)).toEqual(mockAuthUser)
     expect(scope.getState($isAuthenticated)).toBe(true)
@@ -127,7 +131,10 @@ describe("auth store (real API mode)", () => {
     const { loginFx, $user, $isAuthenticated } = await import("../model")
     const scope = fork()
 
-    await allSettled(loginFx, { scope, params: { email: "bad@example.com", password: "wrong" } })
+    await allSettled(loginFx, {
+      scope,
+      params: { email: INVALID_AUTH_CREDENTIALS.email, password: INVALID_AUTH_CREDENTIALS.password },
+    })
 
     expect(scope.getState($user)).toBeNull()
     expect(scope.getState($isAuthenticated)).toBe(false)
@@ -141,7 +148,10 @@ describe("auth store (real API mode)", () => {
     const { loginFx, logoutFx, $user, $isAuthenticated } = await import("../model")
     const scope = fork()
 
-    await allSettled(loginFx, { scope, params: { email: "admin@company.com", password: "password" } })
+    await allSettled(loginFx, {
+      scope,
+      params: { email: TEST_USERS.admin.email, password: TEST_USERS.admin.password },
+    })
     expect(scope.getState($user)).not.toBeNull()
 
     await allSettled(logoutFx, { scope, params: undefined })
@@ -156,7 +166,10 @@ describe("auth store (real API mode)", () => {
     const { loginFx, resetAuth, $user } = await import("../model")
     const scope = fork()
 
-    await allSettled(loginFx, { scope, params: { email: "admin@company.com", password: "password" } })
+    await allSettled(loginFx, {
+      scope,
+      params: { email: TEST_USERS.admin.email, password: TEST_USERS.admin.password },
+    })
     expect(scope.getState($user)).not.toBeNull()
 
     await allSettled(resetAuth, { scope, params: undefined })

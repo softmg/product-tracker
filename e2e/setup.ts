@@ -1,4 +1,5 @@
 import { Page } from "@playwright/test"
+import { TEST_USERS } from "../lib/test-credentials"
 
 export async function loginAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/login")
@@ -8,8 +9,4 @@ export async function loginAs(page: Page, email: string, password: string): Prom
   await page.waitForURL("**/dashboard", { timeout: 15000 })
 }
 
-export const USERS = {
-  admin: { email: "admin@company.com", password: "password" },
-  initiator: { email: "viewer@company.com", password: "password" },
-  pdManager: { email: "po@company.com", password: "password" },
-}
+export const USERS = TEST_USERS
