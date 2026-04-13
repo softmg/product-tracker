@@ -26,6 +26,8 @@ Read .cursor/skills/architecture-principles/SKILL.md # If reviewing structure/de
 
 These skills contain standards and checklists for review.
 
+Serena MCP rule: Review changed symbols and their references with Serena before reporting findings.
+
 ## When to Use
 
 ```

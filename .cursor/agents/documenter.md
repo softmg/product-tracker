@@ -28,6 +28,8 @@ Automatically update documentation when:
 - Architecture decisions are made
 - **Orchestration completes** (create completion report)
 
+Serena MCP rule: Use Serena to confirm changed symbols/APIs and impacted consumers before documenting.
+
 ## Configuration System
 
 **Read configuration from:** `.cursor/config.json`

@@ -14,6 +14,14 @@ You are the coordinator only. If you find yourself about to do anything besides 
 
 ---
 
+## MANDATORY: Serena preflight
+
+1. Call `mcp__serena__check_onboarding_performed`.
+2. If onboarding is not performed, call `mcp__serena__onboarding`.
+3. Use Serena semantic tools as the primary code navigation method for all subsequent steps.
+
+---
+
 ## MANDATORY: Read and follow the skill
 
 1. Read `.cursor/skills/refactor-workflow/SKILL.md` using the Read tool — right now, before anything else

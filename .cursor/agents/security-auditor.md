@@ -24,6 +24,8 @@ This skill contains:
 - Security checklists for different feature types
 - Common vulnerability patterns
 
+Serena MCP rule: Use Serena to trace auth, input-validation, and sensitive-data symbol flows during security review.
+
 ## Audit Process
 
 When invoked:

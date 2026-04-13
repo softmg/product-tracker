@@ -28,6 +28,8 @@ This skill explains:
 - Documentation paths (configurable)
 - File formats and workflows
 
+Serena MCP rule: Use Serena semantic discovery to scope impacted modules and build dependency-aware task plans.
+
 ---
 
 ## When Invoked

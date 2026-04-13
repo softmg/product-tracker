@@ -35,6 +35,8 @@ Read .cursor/skills/architecture-principles/SKILL.md
 
 These skills ensure code quality, security, and architectural consistency from the start.
 
+Serena MCP rule: Before editing, use Serena symbol and reference tools to locate exact targets and dependencies; avoid broad file reads.
+
 ## When Invoked
 
 Execute a specific subtask that was planned by the planner agent or requested directly.

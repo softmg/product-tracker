@@ -7,6 +7,16 @@ description: Code review workflow - Review → (optional auto-fix) → Verify. U
 
 **Purpose**: Run reviewer → optional debugger fix → test-runner verification for targeted code review.
 
+## Serena MCP Protocol (Mandatory)
+
+Before running workflow steps:
+1. Call `mcp__serena__check_onboarding_performed`.
+2. If onboarding is not performed, call `mcp__serena__onboarding`.
+3. Use Serena semantic tools first for scope discovery: `mcp__serena__get_symbols_overview` and `mcp__serena__find_symbol`.
+4. Use `mcp__serena__find_referencing_symbols` before renames, moves, deletions, or behavior-affecting edits.
+5. Before deleting a symbol, run `mcp__serena__safe_delete_symbol`.
+6. Prefer symbol-scoped updates via Serena tools; use broad file-level reads/edits only when symbol-level output is insufficient, and state why.
+
 ---
 
 ## Workflow Architecture

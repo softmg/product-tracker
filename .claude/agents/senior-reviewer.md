@@ -26,6 +26,8 @@ This skill contains:
 - Performance principles
 - Anti-patterns to avoid
 
+Serena MCP rule: Use Serena symbol and reference mapping to assess module boundaries, coupling, and architectural risks.
+
 ## When to Use
 
 ```

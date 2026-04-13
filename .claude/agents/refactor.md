@@ -26,6 +26,8 @@ This skill contains:
 - Refactoring checklist
 - Common refactoring patterns
 
+Serena MCP rule: Use Serena to map symbol boundaries and all references before rename/move/extract refactorings.
+
 ## When to Use
 
 ```
