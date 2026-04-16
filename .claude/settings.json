@@ -173,5 +173,8 @@
   "statusLine": {
     "type": "command",
     "command": "node \"$CLAUDE_PROJECT_DIR/.claude/helpers/statusline.cjs\""
+  },
+  "enabledPlugins": {
+    "agent-teams-sm@agent-teams": true
   }
 }

@@ -28,18 +28,18 @@ const statusDisplayInfo: Record<HypothesisStatus, StatusInfo> = {
     label: "Эксперимент",
     colorClass: "bg-[#FEF3C7] text-[#B45309]",
   },
-  analysis: {
-    label: "Анализ",
-    colorClass: "bg-[#FCE7F3] text-[#BE185D]",
-  },
   go_no_go: {
     label: "Питч",
     colorClass: "bg-[#EDE9FE] text-[#6D28D9]",
   },
   done: {
-    label: "Архив",
+    label: "Done",
     colorClass: "bg-[#DCFCE7] text-[#15803D]",
   },
+  archived: {
+    label: "Архив",
+    colorClass: "bg-[#F3F4F6] text-[#6B7280]",
+  }
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

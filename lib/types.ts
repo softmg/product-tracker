@@ -14,14 +14,14 @@ export interface User {
   lastLoginAt?: string
 }
 
-export type HypothesisStatus = 
-  | 'backlog' 
-  | 'scoring' 
-  | 'deep_dive' 
-  | 'experiment' 
-  | 'analysis' 
-  | 'go_no_go' 
+export type HypothesisStatus =
+  | 'backlog'
+  | 'scoring'
+  | 'deep_dive'
+  | 'experiment'
+  | 'go_no_go'
   | 'done'
+  | 'archived'
 
 export interface Comment {
   id: string

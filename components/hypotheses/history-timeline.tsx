@@ -25,9 +25,9 @@ const statusDisplayInfo: Record<HypothesisStatus, StatusInfo> = {
   scoring: { label: "Скоринг" },
   deep_dive: { label: "Deep Dive" },
   experiment: { label: "Эксперимент" },
-  analysis: { label: "Анализ" },
   go_no_go: { label: "Питч" },
-  done: { label: "Архив" },
+  done: { label: "Done" },
+  archived: { label: "Архив" },
 }
 
 interface HistoryTimelineProps {

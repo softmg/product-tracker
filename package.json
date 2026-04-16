@@ -13,6 +13,8 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@claude-flow/plugin-agentic-qe": "^3.0.0-alpha.4",
+    "@claude-flow/plugin-neural-coordination": "^3.0.0-alpha.1",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",

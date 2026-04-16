@@ -446,7 +446,7 @@ export const mockHypotheses: Hypothesis[] = [
     code: 'HYP-006',
     title: 'Recommendation engine will increase AOV',
     description: 'Personalized product recommendations will increase average order value by 12%',
-    status: 'analysis',
+    status: 'go_no_go',
     teamId: 'team-3',
     ownerId: 'user-4',
     createdAt: '2024-01-25',
@@ -852,9 +852,9 @@ export const mockStatusConfigs: StatusConfig[] = [
   { id: 'scoring', name: 'Scoring', description: 'Being evaluated with ICE framework', order: 2, color: 'scoring', isActive: true },
   { id: 'deep_dive', name: 'Deep Dive', description: 'Detailed research and planning', order: 3, color: 'deep-dive', isActive: true },
   { id: 'experiment', name: 'Experiment', description: 'Running experiments to validate', order: 4, color: 'experiment', isActive: true },
-  { id: 'analysis', name: 'Analysis', description: 'Analyzing experiment results', order: 5, color: 'analysis', isActive: true },
-  { id: 'go_no_go', name: 'Go / No-Go', description: 'Decision pending', order: 6, color: 'go-no-go', isActive: true },
-  { id: 'done', name: 'Done', description: 'Decision made, hypothesis closed', order: 7, color: 'done', isActive: true },
+  { id: 'go_no_go', name: 'Go / No-Go', description: 'Committee voting and decision stage', order: 5, color: 'go-no-go', isActive: true },
+  { id: 'done', name: 'Done', description: 'Positive decision implemented', order: 6, color: 'done', isActive: true },
+  { id: 'archived', name: 'Archived', description: 'Closed without launch / no-go outcome', order: 7, color: 'archived', isActive: true },
 ]
 
 // Audit Log
@@ -904,7 +904,7 @@ export const mockAuditLog: AuditLogEntry[] = [
     entityType: 'hypothesis',
     entityId: 'hyp-7',
     action: 'status_change',
-    changes: { status: { old: 'analysis', new: 'go_no_go' } },
+    changes: { status: { old: 'experiment', new: 'go_no_go' } },
     userId: 'user-2',
     userName: 'Maria Petrova',
     timestamp: '2024-03-14T11:20:00Z'
@@ -972,9 +972,9 @@ export const statusDisplayInfo: Record<string, { label: string; colorClass: stri
   scoring: { label: 'Scoring', colorClass: 'bg-status-scoring text-status-scoring-foreground' },
   deep_dive: { label: 'Deep Dive', colorClass: 'bg-status-deep-dive text-status-deep-dive-foreground' },
   experiment: { label: 'Experiment', colorClass: 'bg-status-experiment text-status-experiment-foreground' },
-  analysis: { label: 'Analysis', colorClass: 'bg-status-analysis text-status-analysis-foreground' },
   go_no_go: { label: 'Go / No-Go', colorClass: 'bg-status-go-no-go text-status-go-no-go-foreground' },
   done: { label: 'Done', colorClass: 'bg-status-done text-status-done-foreground' },
+  archived: { label: 'Archived', colorClass: 'bg-status-archived text-status-archived-foreground' },
 }
 
 export const experimentTypeLabels: Record<string, string> = {
@@ -1202,15 +1202,15 @@ export const mockStatusTransitions: StatusTransition[] = [
   {
     id: 'trans-4',
     fromStatus: 'experiment',
-    toStatus: 'analysis',
+    toStatus: 'go_no_go',
     allowedRoles: ['admin', 'pd_manager'],
     conditionType: 'none',
     isActive: true,
   },
   {
     id: 'trans-5',
-    fromStatus: 'analysis',
-    toStatus: 'go_no_go',
+    fromStatus: 'go_no_go',
+    toStatus: 'archived',
     allowedRoles: ['admin'],
     conditionType: 'required_fields',
     conditionValue: 'experiment_results',
@@ -1235,7 +1235,7 @@ export const mockStatusTransitions: StatusTransition[] = [
   },
   {
     id: 'trans-8',
-    fromStatus: 'analysis',
+    fromStatus: 'go_no_go',
     toStatus: 'experiment',
     allowedRoles: ['admin'],
     conditionType: 'none',
@@ -1255,9 +1255,9 @@ export const mockSLAConfigs: SLAConfig[] = [
   { id: 'sla-2', status: 'scoring', limitDays: 7, warningDays: 2, isActive: true },
   { id: 'sla-3', status: 'deep_dive', limitDays: 21, warningDays: 5, isActive: true },
   { id: 'sla-4', status: 'experiment', limitDays: 30, warningDays: 7, isActive: true },
-  { id: 'sla-5', status: 'analysis', limitDays: 7, warningDays: 2, isActive: true },
-  { id: 'sla-6', status: 'go_no_go', limitDays: 14, warningDays: 3, isActive: true },
-  { id: 'sla-7', status: 'done', limitDays: 0, warningDays: 0, isActive: false },
+  { id: 'sla-5', status: 'go_no_go', limitDays: 7, warningDays: 2, isActive: true },
+  { id: 'sla-6', status: 'done', limitDays: 14, warningDays: 3, isActive: true },
+  { id: 'sla-7', status: 'archived', limitDays: 0, warningDays: 0, isActive: false },
 ]
 
 export const mockSLANotificationConfig: SLANotificationConfig = {

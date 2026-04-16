@@ -22,9 +22,9 @@ const statusDisplayInfo: Record<HypothesisStatus, { label: string; colorClass: s
   scoring: { label: "Скоринг", colorClass: "bg-[#E0E7FF] text-[#4338CA]" },
   deep_dive: { label: "Deep Dive", colorClass: "bg-[#DBEAFE] text-[#1D4ED8]" },
   experiment: { label: "Эксперимент", colorClass: "bg-[#FEF3C7] text-[#B45309]" },
-  analysis: { label: "Анализ", colorClass: "bg-[#FCE7F3] text-[#BE185D]" },
   go_no_go: { label: "Питч", colorClass: "bg-[#EDE9FE] text-[#6D28D9]" },
-  done: { label: "Архив", colorClass: "bg-[#DCFCE7] text-[#15803D]" },
+  done: { label: "Done", colorClass: "bg-[#DCFCE7] text-[#15803D]" },
+  archived: { label: "Архив", colorClass: "bg-[#F3F4F6] text-[#6B7280]" },
 }
 
 const defaultSLAConfigs: SLAConfig[] = [
@@ -32,9 +32,9 @@ const defaultSLAConfigs: SLAConfig[] = [
   { id: "sla-scoring", status: "scoring", limitDays: 7, warningDays: 2, isActive: true },
   { id: "sla-deep-dive", status: "deep_dive", limitDays: 21, warningDays: 5, isActive: true },
   { id: "sla-experiment", status: "experiment", limitDays: 30, warningDays: 7, isActive: true },
-  { id: "sla-analysis", status: "analysis", limitDays: 7, warningDays: 2, isActive: true },
-  { id: "sla-go-no-go", status: "go_no_go", limitDays: 5, warningDays: 2, isActive: true },
-  { id: "sla-done", status: "done", limitDays: 0, warningDays: 0, isActive: true },
+  { id: "sla-go-no-go", status: "go_no_go", limitDays: 7, warningDays: 2, isActive: true },
+  { id: "sla-done", status: "done", limitDays: 5, warningDays: 2, isActive: true },
+  { id: "sla-archived", status: "archived", limitDays: 0, warningDays: 0, isActive: false },
 ]
 
 interface HypothesisKanbanProps {
@@ -59,9 +59,9 @@ const KANBAN_STATUSES: HypothesisStatus[] = [
   'scoring',
   'deep_dive',
   'experiment',
-  'analysis',
   'go_no_go',
   'done',
+  'archived',
 ]
 
 // Kanban column display names (Russian)
@@ -70,9 +70,9 @@ const KANBAN_STATUS_NAMES: Record<HypothesisStatus, string> = {
   scoring: 'Первичный',
   deep_dive: 'Deep Dive',
   experiment: 'Эксперимент',
-  analysis: 'Анализ',
   go_no_go: 'Питч',
-  done: 'Архив',
+  done: 'Done',
+  archived: 'Архив',
 }
 
 const INITIAL_CARDS_TO_SHOW = 5

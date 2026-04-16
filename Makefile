@@ -29,12 +29,20 @@ test-frontend:
 	npm test
 
 admin-reset-password:
-	@if [ -z "$(ADMIN_PASSWORD)" ]; then \
-		echo "Usage: make admin-reset-password ADMIN_PASSWORD=<new_password> [ADMIN_EMAIL=<admin_email>]"; \
+	@ADMIN_EMAIL="$(ADMIN_EMAIL)"; \
+	ADMIN_PASSWORD="$(ADMIN_PASSWORD)"; \
+	if [ -z "$$ADMIN_EMAIL" ]; then \
+		ADMIN_EMAIL="$$(grep -E '^ADMIN_EMAIL=' .env 2>/dev/null | tail -n1 | cut -d '=' -f2-)"; \
+	fi; \
+	if [ -z "$$ADMIN_PASSWORD" ]; then \
+		ADMIN_PASSWORD="$$(grep -E '^ADMIN_PASSWORD=' .env 2>/dev/null | tail -n1 | cut -d '=' -f2-)"; \
+	fi; \
+	if [ -z "$$ADMIN_PASSWORD" ]; then \
+		echo "Set ADMIN_PASSWORD in .env or pass ADMIN_PASSWORD=<new_password>"; \
 		exit 1; \
-	fi
-	@if [ -n "$(ADMIN_EMAIL)" ]; then \
-		docker compose exec backend php artisan admin:reset-password "$(ADMIN_PASSWORD)" --email="$(ADMIN_EMAIL)"; \
+	fi; \
+	if [ -n "$$ADMIN_EMAIL" ]; then \
+		docker compose exec backend php artisan admin:reset-password "$$ADMIN_PASSWORD" --email="$$ADMIN_EMAIL"; \
 	else \
-		docker compose exec backend php artisan admin:reset-password "$(ADMIN_PASSWORD)"; \
+		docker compose exec backend php artisan admin:reset-password "$$ADMIN_PASSWORD"; \
 	fi
