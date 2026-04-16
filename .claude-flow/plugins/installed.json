@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-14T08:27:12.536Z",
+  "plugins": {
+    "@claude-flow/plugin-agentic-qe": {
+      "name": "@claude-flow/plugin-agentic-qe",
+      "version": "3.0.0-alpha.4",
+      "installedAt": "2026-04-14T08:24:50.136Z",
+      "enabled": true,
+      "source": "npm",
+      "path": "/Users/fenix007/projects/ai/product-tracker/.claude-flow/plugins/node_modules/@claude-flow/plugin-agentic-qe",
+      "commands": [],
+      "hooks": []
+    },
+    "@claude-flow/plugin-neural-coordination": {
+      "name": "@claude-flow/plugin-neural-coordination",
+      "version": "3.0.0-alpha.1",
+      "installedAt": "2026-04-14T08:27:12.536Z",
+      "enabled": true,
+      "source": "npm",
+      "path": "/Users/fenix007/projects/ai/product-tracker/.claude-flow/plugins/node_modules/@claude-flow/plugin-neural-coordination",
+      "commands": [],
+      "hooks": []
+    }
+  }
+}
