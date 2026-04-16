@@ -20,10 +20,23 @@ swarm:
 task:
   # Inline task body:
   main: |
-    Describe the main goal here. Be specific:
-    - What to build
-    - Key requirements
-    - Constraints
+    Conduct a project-wide review and targeted refactor via rufler.
+
+    Goals:
+    - Review the codebase using ruflo review/audit/refactor skills.
+    - Enforce .conventions rules from:
+      - .conventions/anti-patterns/*
+      - .conventions/gold-standards/*
+    - Convert validated findings into minimal, behavior-preserving refactors.
+
+    Requirements:
+    - Every finding must include severity, file path, and concrete fix.
+    - Refactors must follow existing project constraints from CLAUDE.md.
+    - No feature creep: only fixes and structural improvements from review.
+
+    Verification:
+    - Run lint/typecheck/tests (or closest available checks).
+    - Produce a concise summary of findings, fixes, and verification results.
   # OR point to a markdown file (relative to this yml):
   # main_path: ./TASK.md
   autonomous: true          # enable autopilot persistent completion loop
@@ -49,8 +62,8 @@ skills:
                             # non-symlinked skill dirs after `ruflo init` so
                             # .claude/skills/ matches this yml exactly.
   all: false                # true = install every pack (overrides `packs`)
-  packs: []                 # core | agentdb | github | flowNexus | browser | v3 | dualMode
-  extra: []                 # individual skill dir names under ruflo's .claude/skills/
+  packs: [core, v3, agentdb] # core | agentdb | github | flowNexus | browser | v3 | dualMode
+  extra: [review, refactor, audit, verification-quality, code-quality-standards, security-guidelines, claude-flow-memory, claude-mem:smart-explore]
   custom: []                # Unified list — each entry is one of:
                             #   1. local path     — abs, ~, or relative to this yml,
                             #                       copied to .claude/skills/<basename>
