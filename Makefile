@@ -46,3 +46,20 @@ admin-reset-password:
 	else \
 		docker compose exec backend php artisan admin:reset-password "$$ADMIN_PASSWORD"; \
 	fi
+
+prod-up:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+
+prod-down:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod down
+
+prod-deploy:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod exec backend php artisan migrate --force
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
+
+prod-update:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build --no-deps backend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod exec backend php artisan migrate --force
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build --no-deps frontend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
