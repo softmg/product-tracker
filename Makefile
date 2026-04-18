@@ -6,6 +6,9 @@ up:
 down:
 	docker compose down
 
+ps:
+	docker compose ps
+
 backend-shell:
 	docker compose exec backend sh
 
