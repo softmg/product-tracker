@@ -2,32 +2,27 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { 
-  PlusCircle, 
-  Pencil, 
-  ArrowRight, 
+import {
+  PlusCircle,
+  Pencil,
+  ArrowRight,
   Trash2,
   FlaskConical,
-  Target,
   FileText,
-  CheckCircle2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AuditLogEntry, HypothesisStatus } from "@/lib/types"
+import { StatusBadge } from "@/components/hypotheses/status-badge"
+import { Badge } from "@/components/ui/badge"
 
-type StatusInfo = {
-  label: string
-}
-
-const statusDisplayInfo: Record<HypothesisStatus, StatusInfo> = {
-  backlog: { label: "Идея" },
-  scoring: { label: "Скоринг" },
-  deep_dive: { label: "Deep Dive" },
-  experiment: { label: "Эксперимент" },
-  go_no_go: { label: "Питч" },
-  done: { label: "Done" },
-  archived: { label: "Архив" },
+const statusLabelByStatus: Record<HypothesisStatus, string> = {
+  backlog: "Идея",
+  scoring: "Скоринг",
+  deep_dive: "Deep Dive",
+  experiment: "Эксперимент",
+  go_no_go: "Питч",
+  done: "Done",
+  archived: "Архив",
 }
 
 interface HistoryTimelineProps {
@@ -100,13 +95,17 @@ export function HistoryTimeline({ entries }: HistoryTimelineProps) {
       return (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm">Changed status from</span>
-          <Badge variant="outline" className="text-xs">
-            {statusDisplayInfo[oldStatus as HypothesisStatus]?.label || oldStatus}
-          </Badge>
+          {oldStatus in statusLabelByStatus ? (
+            <StatusBadge status={oldStatus as HypothesisStatus} className="text-xs" />
+          ) : (
+            <Badge variant="outline" className="text-xs">{oldStatus}</Badge>
+          )}
           <ArrowRight className="h-3 w-3 text-muted-foreground" />
-          <Badge variant="outline" className="text-xs">
-            {statusDisplayInfo[newStatus as HypothesisStatus]?.label || newStatus}
-          </Badge>
+          {newStatus in statusLabelByStatus ? (
+            <StatusBadge status={newStatus as HypothesisStatus} className="text-xs" />
+          ) : (
+            <Badge variant="outline" className="text-xs">{newStatus}</Badge>
+          )}
         </div>
       )
     }

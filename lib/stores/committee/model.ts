@@ -23,7 +23,7 @@ export interface CommitteeDecision {
 export const fetchVotesFx = createEffect(
   async (hypothesisId: number): Promise<{ votes: CommitteeVote[]; decision: CommitteeDecision }> => {
     const { data } = await apiClient.get<{ data: { votes: CommitteeVote[]; decision: CommitteeDecision } }>(
-      `/api/v1/hypotheses/${hypothesisId}/committee`,
+      `/api/v1/hypotheses/${hypothesisId}/votes`,
     )
     return data.data
   },
@@ -40,7 +40,7 @@ export const castVoteFx = createEffect(
     comment?: string
   }): Promise<CommitteeVote> => {
     const { data } = await apiClient.post<{ data: CommitteeVote }>(
-      `/api/v1/hypotheses/${hypothesisId}/committee/vote`,
+      `/api/v1/hypotheses/${hypothesisId}/votes`,
       { vote, comment },
     )
     return data.data
@@ -49,7 +49,7 @@ export const castVoteFx = createEffect(
 
 export const finalizeDecisionFx = createEffect(async (hypothesisId: number): Promise<CommitteeDecision> => {
   const { data } = await apiClient.post<{ data: CommitteeDecision }>(
-    `/api/v1/hypotheses/${hypothesisId}/committee/finalize`,
+    `/api/v1/hypotheses/${hypothesisId}/finalize-decision`,
   )
   return data.data
 })

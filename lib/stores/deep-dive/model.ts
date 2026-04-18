@@ -48,7 +48,7 @@ export const toggleStageFx = createEffect(
     is_completed: boolean
   }): Promise<DeepDiveStage> => {
     const { data } = await apiClient.patch<{ data: DeepDiveStage }>(
-      `/api/v1/hypotheses/${hypothesisId}/deep-dive/stages/${stageId}`,
+      `/api/v1/hypotheses/${hypothesisId}/deep-dive/${stageId}`,
       { is_completed },
     )
     return data.data
@@ -66,7 +66,7 @@ export const addCommentFx = createEffect(
     text: string
   }): Promise<DeepDiveComment> => {
     const { data } = await apiClient.post<{ data: DeepDiveComment }>(
-      `/api/v1/hypotheses/${hypothesisId}/deep-dive/stages/${stageId}/comments`,
+      `/api/v1/hypotheses/${hypothesisId}/deep-dive/${stageId}/comments`,
       { text },
     )
     return data.data
