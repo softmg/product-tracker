@@ -275,18 +275,16 @@ function getV3Progress() {
 
 // Security status (pure file reads)
 function getSecurityStatus() {
-  const auditPath = path.join(CWD, '.claude-flow', 'security', 'audit-status.json');
-  const auditData = readJSON(auditPath);
+  const auditData = readJSON(path.join(CWD, '.claude-flow', 'security', 'audit-status.json'));
   if (auditData) {
-    const auditDate = auditData.lastAudit || auditData.lastScan || auditData.timestamp;
-    const auditMs = auditDate ? new Date(auditDate).getTime() : NaN;
-    const fallbackMs = Number.isFinite(auditMs) ? auditMs : safeStat(auditPath)?.mtimeMs;
-    const isStale = Number.isFinite(fallbackMs)
-      ? (Date.now() - fallbackMs) > 7 * 24 * 60 * 60 * 1000
-      : false;
-
+    const auditDate = auditData.lastAudit || auditData.lastScan;
+    if (!auditDate) {
+      return { status: 'PENDING', cvesFixed: 0, totalCves: 0 };
+    }
+    const auditAge = Date.now() - new Date(auditDate).getTime();
+    const isStale = auditAge > 7 * 24 * 60 * 60 * 1000;
     return {
-      status: isStale ? 'STALE' : String(auditData.status || 'PENDING').toUpperCase(),
+      status: isStale ? 'STALE' : (auditData.status || 'PENDING'),
       cvesFixed: auditData.cvesFixed || 0,
       totalCves: auditData.totalCves || 0,
     };

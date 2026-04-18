@@ -1,5 +1,5 @@
 # RuFlo V3 - Complete Capabilities Reference
-> Generated: 2026-04-12T10:09:49.945Z
+> Generated: 2026-04-18T17:35:32.926Z
 > Full documentation: https://github.com/ruvnet/claude-flow
 
 ## 📋 Table of Contents
@@ -29,14 +29,14 @@ RuFlo V3 is a domain-driven design architecture for multi-agent AI coordination 
 ### Current Configuration
 | Setting | Value |
 |---------|-------|
-| Topology | mesh |
-| Max Agents | 5 |
-| Memory Backend | memory |
-| HNSW Indexing | Disabled |
-| Neural Learning | Disabled |
-| LearningBridge | Disabled |
-| Knowledge Graph | Disabled |
-| Agent Scopes | Disabled |
+| Topology | hierarchical-mesh |
+| Max Agents | 15 |
+| Memory Backend | hybrid |
+| HNSW Indexing | Enabled |
+| Neural Learning | Enabled |
+| LearningBridge | Enabled (SONA + ReasoningBank) |
+| Knowledge Graph | Enabled (PageRank + Communities) |
+| Agent Scopes | Enabled (project/local/user) |
 
 ---
 
@@ -241,9 +241,9 @@ npx @claude-flow/cli@latest doctor --fix
 
 | Component | Status | Description |
 |-----------|--------|-------------|
-| **LearningBridge** | ⏸ Disabled | Connects insights to SONA/ReasoningBank neural pipeline |
-| **MemoryGraph** | ⏸ Disabled | PageRank knowledge graph + community detection |
-| **AgentMemoryScope** | ⏸ Disabled | 3-scope agent memory (project/local/user) |
+| **LearningBridge** | ✅ Enabled | Connects insights to SONA/ReasoningBank neural pipeline |
+| **MemoryGraph** | ✅ Enabled | PageRank knowledge graph + community detection |
+| **AgentMemoryScope** | ✅ Enabled | 3-scope agent memory (project/local/user) |
 
 **LearningBridge** - Insights trigger learning trajectories. Confidence evolves: +0.03 on access, -0.005/hour decay. Consolidation runs the JUDGE/DISTILL/CONSOLIDATE pipeline.
 

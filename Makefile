@@ -1,3 +1,5 @@
+ENV_FILE ?= .env
+
 up:
 	docker compose up -d
 
@@ -48,18 +50,18 @@ admin-reset-password:
 	fi
 
 prod-up:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build
 
 prod-down:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod down
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) down
 
 prod-deploy:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod exec backend php artisan migrate --force
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan migrate --force
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) ps
 
 prod-update:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build --no-deps backend
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod exec backend php artisan migrate --force
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build --no-deps frontend
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps backend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan migrate --force
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps frontend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) ps

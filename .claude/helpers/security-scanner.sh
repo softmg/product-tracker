@@ -75,22 +75,18 @@ run_scan() {
 
   local total_issues=$((secrets + vulns + npm_vulns))
   local status="clean"
-  local statusline_status="CLEAN"
-  local scan_timestamp="$(date -Iseconds)"
 
   if [ "$total_issues" -gt 10 ]; then
     status="critical"
-    statusline_status="IN_PROGRESS"
   elif [ "$total_issues" -gt 0 ]; then
     status="warning"
-    statusline_status="IN_PROGRESS"
   fi
 
   # Update audit status
   cat > "$SCAN_FILE" << EOF
 {
   "status": "$status",
-  "timestamp": "$scan_timestamp",
+  "timestamp": "$(date -Iseconds)",
   "findings": {
     "secrets": $secrets,
     "vulnerabilities": $vulns,
@@ -105,16 +101,11 @@ run_scan() {
 EOF
 
   # Update main audit status file
-  cat > "$SECURITY_DIR/audit-status.json" << EOF
-{
-  "status": "$statusline_status",
-  "cvesFixed": 3,
-  "totalCves": 3,
-  "issues": $total_issues,
-  "lastAudit": "$scan_timestamp",
-  "lastScan": "$scan_timestamp"
-}
-EOF
+  if [ "$status" = "clean" ]; then
+    echo '{"status":"CLEAN","cvesFixed":3}' > "$SECURITY_DIR/audit-status.json"
+  else
+    echo "{\"status\":\"$status\",\"cvesFixed\":3,\"issues\":$total_issues}" > "$SECURITY_DIR/audit-status.json"
+  fi
 
   echo "[$(date +%H:%M:%S)] ✓ Security: $status | Secrets: $secrets | Vulns: $vulns | NPM: $npm_vulns"
 
