@@ -68,3 +68,21 @@ prod-update:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan migrate --force
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps frontend
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) ps
+
+prod-cert-init-selfsigned:
+	ENV_FILE=$(ENV_FILE) ./scripts/init-self-signed.sh
+
+prod-cert-renew-selfsigned:
+	ENV_FILE=$(ENV_FILE) ./scripts/renew-self-signed.sh
+
+prod-up-selfsigned:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build
+
+prod-cert-rootca-path:
+	@echo "./config/certs/rootCA.crt"
+
+prod-cert-install-help:
+	@echo "Install ./config/certs/rootCA.crt into trusted roots on client machines"
+
+prod-cert-cron-example:
+	@echo "0 3 */60 * * cd $(PWD) && ENV_FILE=$(ENV_FILE) ./scripts/renew-self-signed.sh >> /var/log/product-tracker-cert-renew.log 2>&1"
