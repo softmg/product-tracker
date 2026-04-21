@@ -52,6 +52,9 @@ admin-reset-password:
 		docker compose exec backend php artisan admin:reset-password "$$ADMIN_PASSWORD"; \
 	fi
 
+app-key-generate:
+	@echo "APP_KEY=$$(docker compose exec backend php artisan key:generate --show)"
+
 prod-up:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build
 
