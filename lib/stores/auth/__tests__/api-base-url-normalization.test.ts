@@ -63,6 +63,57 @@ describe("api-client helpers", () => {
     expect(normalizeApiBaseUrl("  http://localhost:8000/api  ")).toBe("http://localhost:8000")
   })
 
+  it("skips csrf preflight for setup admin bootstrap request", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
+
+    await import("@/lib/api-client")
+
+    const requestHandler = (globalThis as {
+      __apiRequestHandler?: (config: { method?: string; url?: string; headers?: Record<string, string> }) => Promise<{
+        method?: string
+        url?: string
+        headers?: Record<string, string>
+      }>
+    }).__apiRequestHandler
+
+    expect(requestHandler).toBeTruthy()
+
+    const config = { method: "post", url: "/api/v1/setup/admin", headers: {} as Record<string, string> }
+
+    await requestHandler!(config)
+
+    expect(mockAxiosGet).not.toHaveBeenCalled()
+    expect(config.headers["X-XSRF-TOKEN"]).toBeUndefined()
+  })
+
+  it("keeps csrf preflight for other mutating requests", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
+
+    await import("@/lib/api-client")
+
+    const requestHandler = (globalThis as {
+      __apiRequestHandler?: (config: { method?: string; url?: string; headers?: Record<string, string> }) => Promise<{
+        method?: string
+        url?: string
+        headers?: Record<string, string>
+      }>
+    }).__apiRequestHandler
+
+    expect(requestHandler).toBeTruthy()
+
+    const config = { method: "post", url: "/api/v1/auth/login", headers: {} as Record<string, string> }
+
+    await requestHandler!(config)
+
+    expect(mockAxiosGet).toHaveBeenCalledWith("http://localhost:8000/sanctum/csrf-cookie", {
+      withCredentials: true,
+      headers: { Accept: "application/json" },
+    })
+    expect(config.headers["X-XSRF-TOKEN"]).toBe("test-token")
+  })
+
   it("retries once after 419 by refreshing csrf cookie", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
     vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")

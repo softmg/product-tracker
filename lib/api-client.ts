@@ -29,6 +29,16 @@ const getCookieValue = (name: string): string | null => {
   return decodeURIComponent(cookie.split("=").slice(1).join("="))
 }
 
+const isSetupAdminBootstrapRequest = (method: string, url: string | undefined): boolean => {
+  if (method !== "post" || !url) {
+    return false
+  }
+
+  const normalizedUrl = url.split("?")[0].replace(/\/+$/, "")
+
+  return normalizedUrl === "/api/v1/setup/admin" || normalizedUrl.endsWith("/api/v1/setup/admin")
+}
+
 const apiClient = axios.create({
   baseURL: backendBaseUrl,
   withCredentials: true,
@@ -41,8 +51,9 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(async (config) => {
   const method = (config.method || "get").toLowerCase()
   const shouldAttachCsrf = ["post", "put", "patch", "delete"].includes(method)
+  const shouldSkipCsrf = isSetupAdminBootstrapRequest(method, config.url)
 
-  if (shouldAttachCsrf && backendBaseUrl && !useMockFallback) {
+  if (shouldAttachCsrf && !shouldSkipCsrf && backendBaseUrl && !useMockFallback) {
     await axios.get(`${backendBaseUrl}/sanctum/csrf-cookie`, {
       withCredentials: true,
       headers: {
