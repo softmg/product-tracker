@@ -5,7 +5,6 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
-      - --providers.docker.network=tracker-net
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
       - --providers.file.filename=/config/traefik/dynamic.yml
@@ -51,8 +50,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend-http.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.middlewares=frontend-redirect-https"
-      - "traefik.http.middlewares.frontend-redirect-https.redirectscheme.scheme=https"
       - "traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
@@ -108,8 +105,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.backend-http.rule=Host(`${API_DOMAIN}`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
-      - "traefik.http.routers.backend-http.middlewares=backend-redirect-https"
-      - "traefik.http.middlewares.backend-redirect-https.redirectscheme.scheme=https"
       - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls=true"
