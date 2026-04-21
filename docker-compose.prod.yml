@@ -103,10 +103,12 @@ services:
       start_period: 60s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend-http.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.backend-http.rule=Host(`${API_DOMAIN}`) || (Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/sanctum`)))"
       - "traefik.http.routers.backend-http.entrypoints=web"
-      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.backend-http.priority=100"
+      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`) || (Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/sanctum`)))"
       - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.priority=100"
       - "traefik.http.routers.backend.tls=true"
       - "traefik.http.routers.backend.service=backend"
       - "traefik.http.services.backend.loadbalancer.server.port=80"
