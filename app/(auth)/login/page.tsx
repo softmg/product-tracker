@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { apiClient } from "@/lib/api-client"
 import { isAuthMockMode } from "@/lib/stores/auth/model"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,8 +19,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [needsSetup, setNeedsSetup] = useState(false)
   const { login, isLoading } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    if (isAuthMockMode) {
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const response = await apiClient.get<{ needs_setup?: boolean }>("/api/v1/setup/status")
+        if (!cancelled) {
+          setNeedsSetup(Boolean(response.data?.needs_setup))
+        }
+      } catch {
+        if (!cancelled) {
+          setNeedsSetup(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,7 +138,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      {!isAuthMockMode && (
+      {!isAuthMockMode && needsSetup && (
         <p className="text-center text-sm text-muted-foreground">
           Первый запуск?{" "}
           <Link href="/setup" className="text-primary hover:underline font-medium">
