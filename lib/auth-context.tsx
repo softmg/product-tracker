@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
 import { useUnit } from "effector-react"
 import type { User, UserRole } from "./types"
 import { loginFx, logoutFx, fetchMeFx, restoreMockSessionFx, $user, $isAuthenticated, $isAuthLoading, isAuthMockMode, setUserRole } from "@/lib/stores/auth/model"
@@ -61,6 +62,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const publicAuthPaths = new Set(["/login", "/setup", "/forgot-password", "/reset-password"])
 
 const mapAuthUserToUser = (authUser: AuthUser): User => ({
   id: `user-${authUser.id}`,
@@ -77,8 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authUser, isAuthenticated, isLoading, doLogin, doLogout, doFetchMe, doRestoreMockSession, updateRole] =
     useUnit([$user, $isAuthenticated, $isAuthLoading, loginFx, logoutFx, fetchMeFx, restoreMockSessionFx, setUserRole])
   const [isSessionCheckDone, setIsSessionCheckDone] = useState(false)
+  const pathname = usePathname()
+  const isPublicAuthPath = publicAuthPaths.has(pathname)
 
   useEffect(() => {
+    if (isPublicAuthPath) {
+      setIsSessionCheckDone(true)
+      return
+    }
+
     if (authUser || isSessionCheckDone) {
       return
     }
@@ -101,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         setIsSessionCheckDone(true)
       })
-  }, [authUser, doFetchMe, doRestoreMockSession, isSessionCheckDone])
+  }, [authUser, doFetchMe, doRestoreMockSession, isPublicAuthPath, isSessionCheckDone])
 
   useEffect(() => {
     if (authUser && !isSessionCheckDone) {
@@ -174,4 +183,3 @@ export function useAuth() {
 
   return context
 }
-

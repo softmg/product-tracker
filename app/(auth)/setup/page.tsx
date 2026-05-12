@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { isAuthMockMode } from "@/lib/stores/auth/model"
@@ -21,7 +21,33 @@ export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [done, setDone] = useState(false)
+  const [setupStatus, setSetupStatus] = useState<"checking" | "available" | "completed">("checking")
   const router = useRouter()
+
+  useEffect(() => {
+    if (isAuthMockMode) {
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const response = await apiClient.get<{ needs_setup?: boolean }>("/api/v1/setup/status")
+        if (!cancelled) {
+          setSetupStatus(response.data?.needs_setup ? "available" : "completed")
+        }
+      } catch {
+        if (!cancelled) {
+          setSetupStatus("available")
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   if (isAuthMockMode) {
     return (
@@ -59,9 +85,47 @@ export default function SetupPage() {
     )
   }
 
+  if (setupStatus === "checking") {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3 text-center">
+          <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-2xl font-semibold tracking-tight">Проверка настройки</h1>
+          <p className="text-sm text-muted-foreground">
+            Проверяем, нужна ли первоначальная настройка системы.
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <Spinner className="h-6 w-6" />
+        </div>
+      </div>
+    )
+  }
+
+  if (setupStatus === "completed") {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3 text-center">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+          <h1 className="text-2xl font-semibold tracking-tight">Система уже настроена</h1>
+          <p className="text-sm text-muted-foreground">
+            Первый администратор уже создан. Войдите в систему или используйте восстановление пароля.
+          </p>
+        </div>
+        <Button className="w-full" onClick={() => router.push("/login")}>
+          Перейти ко входу
+        </Button>
+      </div>
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+
+    if (setupStatus !== "available") {
+      return
+    }
 
     if (password !== passwordConfirmation) {
       setError("Пароли не совпадают.")
@@ -84,7 +148,13 @@ export default function SetupPage() {
       })
       setDone(true)
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } }
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } }
+
+      if (axiosErr.response?.status === 403) {
+        setSetupStatus("completed")
+        return
+      }
+
       setError(
         axiosErr.response?.data?.message ??
           "Не удалось создать администратора. Возможно, система уже настроена."

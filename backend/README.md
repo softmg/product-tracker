@@ -29,7 +29,8 @@ Backend доступен по адресу `http://localhost:${BACKEND_PORT}`.
 
 - `DB_CONNECTION=pgsql`, `DB_HOST=db`, `DB_PORT=5432`
 - `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
-- `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`, `SESSION_DRIVER=redis`
+- `SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=database` в production по умолчанию
+- Redis можно включать для этих drivers только если backend runtime точно имеет PHP extension `redis`
 - `REDIS_HOST=redis`, `REDIS_PORT=6379`
 - `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN`, `FRONTEND_URL`
 - `API_PREFIX=api`, `API_VERSION=v1`

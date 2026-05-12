@@ -84,9 +84,10 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      SESSION_DRIVER: redis
-      CACHE_STORE: redis
-      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      CACHE_STORE: ${CACHE_STORE:-database}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
       SESSION_DOMAIN: ${SESSION_DOMAIN}
       SESSION_SECURE_COOKIE: "true"
       SESSION_SAME_SITE: lax
