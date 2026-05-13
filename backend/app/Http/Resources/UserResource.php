@@ -14,6 +14,8 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $attributes = $this->resource->getAttributes();
+
         return [
             'id' => $this->id,
             'email' => $this->email,
@@ -25,8 +27,13 @@ class UserResource extends JsonResource
                 'name' => $this->team->name,
             ]),
             'is_active' => $this->is_active,
+            'sso_provider' => array_key_exists('sso_provider', $attributes) ? $this->sso_provider : null,
+            'sso_subject' => array_key_exists('sso_subject', $attributes) ? $this->sso_subject : null,
             'created_at' => $this->created_at?->toIso8601String(),
             'last_login_at' => $this->last_login_at?->toIso8601String(),
+            'sso_last_login_at' => array_key_exists('sso_last_login_at', $attributes)
+                ? $this->sso_last_login_at?->toIso8601String()
+                : null,
         ];
     }
 }

@@ -26,10 +26,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'sso_provider',
+        'sso_subject',
         'role',
         'team_id',
         'is_active',
+        'email_verified_at',
         'last_login_at',
+        'sso_last_login_at',
     ];
 
     /**
@@ -51,6 +55,7 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'sso_last_login_at' => 'datetime',
         ];
     }
 

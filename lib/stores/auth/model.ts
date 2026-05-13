@@ -37,8 +37,11 @@ const mapMockUserToAuthUser = (user: (typeof mockUsers)[number]): AuthUser => ({
   team_id: parseMockId(user.teamId, "team-"),
   team: null,
   is_active: user.isActive,
+  sso_provider: null,
+  sso_subject: null,
   created_at: user.createdAt,
   last_login_at: user.lastLoginAt ?? null,
+  sso_last_login_at: null,
 })
 
 export const loginFx = createEffect(async ({ email, password }: LoginParams): Promise<AuthUser> => {

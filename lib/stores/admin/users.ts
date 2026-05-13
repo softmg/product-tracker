@@ -10,8 +10,11 @@ export interface AdminUser {
   team_id: number | null
   team: { id: number; name: string } | null
   is_active: boolean
+  sso_provider: string | null
+  sso_subject: string | null
   created_at: string
   last_login_at: string | null
+  sso_last_login_at: string | null
 }
 
 export interface CreateUserParams {
@@ -31,7 +34,7 @@ export interface UpdateUserParams {
 }
 
 export const fetchUsersFx = createEffect(async (): Promise<AdminUser[]> => {
-  const { data } = await apiClient.get<{ data: AdminUser[] }>("/api/v1/admin/users")
+  const { data } = await apiClient.get<{ data: AdminUser[] }>("/api/v1/admin/users?per_page=100")
   return data.data
 })
 

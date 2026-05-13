@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, UserCheck, UserX } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useUnit } from "effector-react"
+import { Plus, Search, MoreHorizontal, UserCheck, UserX, AlertCircle } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Table,
   TableBody,
@@ -18,7 +21,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -38,13 +40,60 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { mockUsers, mockTeams, roleLabels, getTeamById } from "@/lib/mock-data"
+import { roleLabels } from "@/lib/mock-data"
+import { $users, $usersLoading, createUserFx, fetchUsersFx, toggleUserActiveFx } from "@/lib/stores/admin/users"
+import { $teams, fetchTeamsFx } from "@/lib/stores/admin/teams"
+import type { UserRole } from "@/lib/types"
+
+const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>
+
+const getApiErrorMessage = (error: unknown): string => {
+  const response = typeof error === "object" && error !== null && "response" in error
+    ? (error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }).response
+    : undefined
+
+  const validationErrors = response?.data?.errors
+  const firstValidationError = validationErrors ? Object.values(validationErrors)[0]?.[0] : undefined
+
+  return firstValidationError ?? response?.data?.message ?? "Не удалось выполнить действие."
+}
 
 export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [formName, setFormName] = useState("")
+  const [formEmail, setFormEmail] = useState("")
+  const [formPassword, setFormPassword] = useState("")
+  const [formRole, setFormRole] = useState<UserRole>("initiator")
+  const [formTeamId, setFormTeamId] = useState("none")
+  const [pageError, setPageError] = useState("")
+  const [formError, setFormError] = useState("")
+  const [users, usersLoading, teams, createPending, doFetchUsers, doFetchTeams, doCreateUser, doToggleUserActive] = useUnit([
+    $users,
+    $usersLoading,
+    $teams,
+    createUserFx.pending,
+    fetchUsersFx,
+    fetchTeamsFx,
+    createUserFx,
+    toggleUserActiveFx,
+  ])
 
-  const filteredUsers = mockUsers.filter(user => {
+  useEffect(() => {
+    void doFetchUsers().catch((error: unknown) => setPageError(getApiErrorMessage(error)))
+    void doFetchTeams().catch(() => undefined)
+  }, [doFetchTeams, doFetchUsers])
+
+  const resetForm = () => {
+    setFormName("")
+    setFormEmail("")
+    setFormPassword("")
+    setFormRole("initiator")
+    setFormTeamId("none")
+    setFormError("")
+  }
+
+  const filteredUsers = users.filter(user => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
     return (
@@ -83,13 +132,50 @@ export default function AdminUsersPage() {
     }
   }
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return "-"
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
     })
+  }
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open) {
+      resetForm()
+    }
+  }
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setFormError("")
+
+    try {
+      await doCreateUser({
+        name: formName.trim(),
+        email: formEmail.trim(),
+        password: formPassword,
+        role: formRole,
+        team_id: formTeamId === "none" ? undefined : Number(formTeamId),
+      })
+
+      setIsDialogOpen(false)
+      resetForm()
+    } catch (error: unknown) {
+      setFormError(getApiErrorMessage(error))
+    }
+  }
+
+  const handleToggleActive = async (id: number) => {
+    setPageError("")
+
+    try {
+      await doToggleUserActive(id)
+    } catch (error: unknown) {
+      setPageError(getApiErrorMessage(error))
+    }
   }
 
   return (
@@ -106,7 +192,7 @@ export default function AdminUsersPage() {
                 Manage user accounts and permissions
               </p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -120,24 +206,56 @@ export default function AdminUsersPage() {
                     Create a new user account
                   </DialogDescription>
                 </DialogHeader>
-                <form className="space-y-4">
+                <form className="space-y-4" onSubmit={handleCreateUser}>
+                  {formError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{formError}</AlertDescription>
+                    </Alert>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
-                    <Input id="name" placeholder="Full name" />
+                    <Input
+                      id="name"
+                      placeholder="Full name"
+                      value={formName}
+                      onChange={(event) => setFormName(event.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="email@company.com" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@company.com"
+                      value={formEmail}
+                      onChange={(event) => setFormEmail(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Temporary password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="At least 8 characters"
+                      value={formPassword}
+                      onChange={(event) => setFormPassword(event.target.value)}
+                      required
+                      minLength={8}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select>
+                      <Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(roleLabels).map(([value, label]) => (
+                          {roleOptions.map(([value, label]) => (
                             <SelectItem key={value} value={value}>
                               {label}
                             </SelectItem>
@@ -147,13 +265,14 @@ export default function AdminUsersPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="team">Team</Label>
-                      <Select>
+                      <Select value={formTeamId} onValueChange={setFormTeamId}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select team" />
                         </SelectTrigger>
                         <SelectContent>
-                          {mockTeams.map((team) => (
-                            <SelectItem key={team.id} value={team.id}>
+                          <SelectItem value="none">No team</SelectItem>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={String(team.id)}>
                               {team.name}
                             </SelectItem>
                           ))}
@@ -165,7 +284,10 @@ export default function AdminUsersPage() {
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit">Create User</Button>
+                    <Button type="submit" disabled={createPending}>
+                      {createPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                      Create User
+                    </Button>
                   </div>
                 </form>
               </DialogContent>
@@ -183,6 +305,13 @@ export default function AdminUsersPage() {
             />
           </div>
 
+          {pageError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{pageError}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Table */}
           <div className="rounded-lg border">
             <Table>
@@ -197,9 +326,21 @@ export default function AdminUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => {
-                  const team = getTeamById(user.teamId)
-                  return (
+                {usersLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      <Spinner className="mx-auto mb-2 h-5 w-5" />
+                      Loading users...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      No users found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -220,10 +361,10 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {team?.name || "-"}
+                        {user.team?.name || "-"}
                       </TableCell>
                       <TableCell>
-                        {user.isActive ? (
+                        {user.is_active ? (
                           <Badge variant="outline" className="text-[#22C55E] border-[#22C55E]/30">
                             <UserCheck className="mr-1 h-3 w-3" />
                             Active
@@ -236,7 +377,7 @@ export default function AdminUsersPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(user.lastLoginAt)}
+                        {formatDate(user.last_login_at)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -246,12 +387,8 @@ export default function AdminUsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              {user.isActive ? (
+                            <DropdownMenuItem onClick={() => void handleToggleActive(user.id)}>
+                              {user.is_active ? (
                                 <>
                                   <UserX className="mr-2 h-4 w-4" />
                                   Deactivate
@@ -263,17 +400,12 @@ export default function AdminUsersPage() {
                                 </>
                               )}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, KeyRound } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -22,8 +22,16 @@ export default function LoginPage() {
   const [needsSetup, setNeedsSetup] = useState(false)
   const { login, isLoading } = useAuth()
   const router = useRouter()
+  const ssoEnabled = process.env.NEXT_PUBLIC_SSO_ENABLED === "true" && !isAuthMockMode
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "")
+  const keycloakLoginUrl = `${apiBaseUrl}/api/v1/auth/keycloak/redirect`
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has("sso_error")) {
+      setError("Не удалось войти через SSO. Проверьте доступ в Keycloak.")
+    }
+
     if (isAuthMockMode) {
       return
     }
@@ -73,10 +81,26 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 pb-4">
           <CardTitle className="text-lg">Вход</CardTitle>
           <CardDescription>
-            Используйте ваш email и пароль для входа
+            {ssoEnabled ? "Используйте корпоративный SSO или локальный пароль" : "Используйте ваш email и пароль для входа"}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {ssoEnabled && (
+            <div className="mb-5 space-y-4">
+              <Button asChild className="w-full">
+                <a href={keycloakLoginUrl}>
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Войти через Keycloak
+                </a>
+              </Button>
+              <div className="flex items-center gap-3 text-xs uppercase text-muted-foreground">
+                <div className="h-px flex-1 bg-border" />
+                <span>или</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive">
