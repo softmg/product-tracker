@@ -65,6 +65,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - .env
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
@@ -94,17 +96,6 @@ services:
       SESSION_SAME_SITE: lax
       FRONTEND_URL: ${FRONTEND_PUBLIC_URL}
       SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS}
-      KEYCLOAK_ENABLED: ${KEYCLOAK_ENABLED:-false}
-      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
-      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-}
-      KEYCLOAK_ALLOWED_DOMAINS: ${KEYCLOAK_ALLOWED_DOMAINS:-}
-      KEYCLOAK_ADMIN_EMAILS: ${KEYCLOAK_ADMIN_EMAILS:-}
-      KEYCLOAK_AUTO_PROVISION: ${KEYCLOAK_AUTO_PROVISION:-true}
-      KEYCLOAK_DEFAULT_ROLE: ${KEYCLOAK_DEFAULT_ROLE:-initiator}
-      KEYCLOAK_REQUIRE_VERIFIED_EMAIL: ${KEYCLOAK_REQUIRE_VERIFIED_EMAIL:-false}
     depends_on:
       - db
       - redis
