@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "product-discovery": {
+      "source": "majiayu000/claude-arsenal",
+      "sourceType": "github",
+      "skillPath": "skills/product-discovery/SKILL.md",
+      "computedHash": "3a8ee51fedb701116a9a244f0df8974023823df86b92054010915d1325a4a046"
+    }
+  }
+}
