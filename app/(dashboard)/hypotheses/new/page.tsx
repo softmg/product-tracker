@@ -36,20 +36,26 @@ export default function NewHypothesisPage() {
   const router = useRouter()
   const { hasPermission, user } = useAuth()
   const hypotheses = useUnit($hypotheses)
+  const canCreateHypothesis = hasPermission("hypothesis:create")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [priority, setPriority] = useState<Priority>("medium")
   const [selectedTeamId, setSelectedTeamId] = useState<string>("")
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("")
 
-  if (!hasPermission("hypothesis:create")) {
-    router.push("/hypotheses")
-    return null
-  }
+  useEffect(() => {
+    if (!canCreateHypothesis) {
+      router.replace("/hypotheses")
+    }
+  }, [canCreateHypothesis, router])
 
   useEffect(() => {
+    if (!canCreateHypothesis) {
+      return
+    }
+
     void fetchHypothesesFx({ per_page: 200 })
-  }, [])
+  }, [canCreateHypothesis])
 
   const teamOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -126,6 +132,7 @@ export default function NewHypothesisPage() {
         title: String(data.get("title") ?? ""),
         problem: String(data.get("problem") ?? "") || undefined,
         solution: String(data.get("solution") ?? "") || undefined,
+        assumptions: String(data.get("assumptions") ?? "") || undefined,
         target_audience: String(data.get("audience") ?? "") || undefined,
         priority,
         team_id: selectedTeamId ? Number(selectedTeamId) : undefined,
@@ -139,6 +146,10 @@ export default function NewHypothesisPage() {
 
   const teamSelectValue = selectedTeamId || "none"
   const ownerSelectValue = selectedOwnerId || "none"
+
+  if (!canCreateHypothesis) {
+    return null
+  }
 
   return (
     <>
@@ -209,6 +220,7 @@ export default function NewHypothesisPage() {
                   <Label htmlFor="assumptions">Ключевые предположения *</Label>
                   <Textarea
                     id="assumptions"
+                    name="assumptions"
                     placeholder="Какие предположения лежат в основе вашей гипотезы?"
                     rows={2}
                     required

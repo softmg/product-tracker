@@ -32,6 +32,7 @@ export interface ApiHypothesisDetail extends ApiHypothesisList {
   description: string | null
   problem: string | null
   solution: string | null
+  assumptions: string | null
   target_audience: string | null
   initiator_id: number | null
   owner_id: number | null
@@ -62,6 +63,7 @@ export interface CreateHypothesisParams {
   description?: string
   problem?: string
   solution?: string
+  assumptions?: string
   target_audience?: string
   team_id?: number
   priority?: "low" | "medium" | "high"
@@ -73,6 +75,7 @@ export interface UpdateHypothesisParams {
   description?: string
   problem?: string
   solution?: string
+  assumptions?: string
   target_audience?: string
   team_id?: number
   priority?: "low" | "medium" | "high"

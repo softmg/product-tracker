@@ -41,6 +41,24 @@ const mapMockToApiList = (h: (typeof mockHypotheses)[number]): ApiHypothesisList
   updated_at: h.updatedAt,
 })
 
+const mapDetailToApiList = (h: ApiHypothesisDetail): ApiHypothesisList => ({
+  id: h.id,
+  code: h.code,
+  title: h.title,
+  status: h.status,
+  priority: h.priority,
+  initiator: h.initiator,
+  owner: h.owner,
+  team: h.team,
+  scoring_primary: h.scoring_primary,
+  scoring_deep: h.scoring_deep,
+  sla_deadline: h.sla_deadline,
+  created_at: h.created_at,
+  updated_at: h.updated_at,
+})
+
+const mockCreatedHypotheses: ApiHypothesisDetail[] = []
+
 // ─── Effects ────────────────────────────────────────────────────────────────
 
 export const fetchHypothesesFx = createEffect(
@@ -55,7 +73,15 @@ export const fetchHypothesesFx = createEffect(
             h.title.toLowerCase().includes(params.search.toLowerCase()) ||
             h.code.toLowerCase().includes(params.search.toLowerCase()),
         )
-      const mapped = filtered.map(mapMockToApiList)
+      const createdFiltered = mockCreatedHypotheses
+        .filter((h) => !params.status || h.status === params.status)
+        .filter(
+          (h) =>
+            !params.search ||
+            h.title.toLowerCase().includes(params.search.toLowerCase()) ||
+            h.code.toLowerCase().includes(params.search.toLowerCase()),
+        )
+      const mapped = [...filtered.map(mapMockToApiList), ...createdFiltered.map(mapDetailToApiList)]
       return {
         data: mapped,
         meta: { current_page: 1, last_page: 1, per_page: mapped.length, total: mapped.length, from: 1, to: mapped.length },
@@ -73,6 +99,11 @@ export const fetchHypothesesFx = createEffect(
 export const fetchHypothesisFx = createEffect(async (id: number): Promise<ApiHypothesisDetail> => {
   if (isHypothesisMockMode) {
     await new Promise((resolve) => setTimeout(resolve, 100))
+    const created = mockCreatedHypotheses.find((m) => m.id === id)
+    if (created) {
+      return created
+    }
+
     const h = mockHypotheses.find((m) => Number.parseInt(m.id.replace("hyp-", ""), 10) === id)
     if (!h) throw new Error(`Hypothesis ${id} not found`)
     return {
@@ -80,6 +111,7 @@ export const fetchHypothesisFx = createEffect(async (id: number): Promise<ApiHyp
       description: h.description ?? null,
       problem: null,
       solution: null,
+      assumptions: null,
       target_audience: null,
       initiator_id: null,
       owner_id: h.ownerId ? Number.parseInt(h.ownerId.replace("user-", ""), 10) : null,
@@ -94,8 +126,9 @@ export const fetchHypothesisFx = createEffect(async (id: number): Promise<ApiHyp
 export const createHypothesisFx = createEffect(async (params: CreateHypothesisParams): Promise<ApiHypothesisDetail> => {
   if (isHypothesisMockMode) {
     await new Promise((resolve) => setTimeout(resolve, 300))
-    const newId = mockHypotheses.length + 1
-    return {
+    const newId = mockHypotheses.length + mockCreatedHypotheses.length + 1
+    const createdAt = new Date().toISOString()
+    const created: ApiHypothesisDetail = {
       id: newId,
       code: `HYP-${String(newId).padStart(3, "0")}`,
       title: params.title,
@@ -107,16 +140,20 @@ export const createHypothesisFx = createEffect(async (params: CreateHypothesisPa
       scoring_primary: null,
       scoring_deep: null,
       sla_deadline: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: createdAt,
+      updated_at: createdAt,
       description: params.description ?? null,
       problem: params.problem ?? null,
       solution: params.solution ?? null,
+      assumptions: params.assumptions ?? null,
       target_audience: params.target_audience ?? null,
       initiator_id: null,
       owner_id: null,
       team_id: params.team_id ?? null,
     }
+
+    mockCreatedHypotheses.push(created)
+    return created
   }
 
   const { data } = await apiClient.post<{ data: ApiHypothesisDetail }>("/api/v1/hypotheses", params)
@@ -142,6 +179,7 @@ export const transitionHypothesisFx = createEffect(
         description: h.description ?? null,
         problem: null,
         solution: null,
+        assumptions: null,
         target_audience: null,
         initiator_id: null,
         owner_id: h.ownerId ? Number.parseInt(h.ownerId.replace("user-", ""), 10) : null,
@@ -171,6 +209,7 @@ export const setFilters = createEvent<FetchHypothesesParams>()
 
 export const $hypotheses = createStore<ApiHypothesisList[]>([])
   .on(fetchHypothesesFx.doneData, (_, result) => result.data)
+  .on(createHypothesisFx.doneData, (list, hypothesis) => [...list, mapDetailToApiList(hypothesis)])
   .on(deleteHypothesisFx.done, (list, { params: id }) => list.filter((h) => h.id !== id))
   .reset(resetHypotheses)
 
@@ -180,6 +219,7 @@ export const $hypothesesMeta = createStore<ApiPaginationMeta | null>(null)
 
 export const $currentHypothesis = createStore<ApiHypothesisDetail | null>(null)
   .on(fetchHypothesisFx.doneData, (_, hypothesis) => hypothesis)
+  .on(createHypothesisFx.doneData, (_, hypothesis) => hypothesis)
   .on(updateHypothesisFx.doneData, (_, hypothesis) => hypothesis)
   .on(transitionHypothesisFx.doneData, (_, hypothesis) => hypothesis)
   .reset(resetCurrentHypothesis)
