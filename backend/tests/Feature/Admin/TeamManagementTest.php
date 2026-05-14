@@ -29,7 +29,15 @@ class TeamManagementTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('data.0.member_count', 1);
+            ->assertJsonPath('data.0.member_count', 1)
+            ->assertJsonPath('data.0.hypotheses_count', 0)
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'created_at',
+                    ],
+                ],
+            ]);
     }
 
     public function test_admin_can_create_team(): void

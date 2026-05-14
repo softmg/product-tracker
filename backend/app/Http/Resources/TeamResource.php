@@ -19,6 +19,8 @@ class TeamResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'member_count' => $this->whenCounted('users'),
+            'hypotheses_count' => $this->whenCounted('hypotheses'),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

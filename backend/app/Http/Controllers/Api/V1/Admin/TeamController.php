@@ -18,7 +18,7 @@ class TeamController extends Controller
     {
         return TeamResource::collection(
             Team::query()
-                ->withCount('users')
+                ->withCount(['users', 'hypotheses'])
                 ->orderBy('id')
                 ->get(),
         );
@@ -28,7 +28,7 @@ class TeamController extends Controller
     {
         $team = Team::query()->create($request->validated());
 
-        return (new TeamResource($team->loadCount('users')))
+        return (new TeamResource($team->loadCount(['users', 'hypotheses'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -37,7 +37,7 @@ class TeamController extends Controller
     {
         $team->update($request->validated());
 
-        return new TeamResource($team->loadCount('users'));
+        return new TeamResource($team->loadCount(['users', 'hypotheses']));
     }
 
     public function destroy(Team $team): JsonResponse

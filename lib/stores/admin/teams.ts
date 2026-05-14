@@ -5,19 +5,20 @@ export interface AdminTeam {
   id: number
   name: string
   description: string | null
-  members_count: number
+  member_count: number
+  hypotheses_count: number
   created_at: string
 }
 
 export interface CreateTeamParams {
   name: string
-  description?: string
+  description?: string | null
 }
 
 export interface UpdateTeamParams {
   id: number
   name?: string
-  description?: string
+  description?: string | null
 }
 
 export const fetchTeamsFx = createEffect(async (): Promise<AdminTeam[]> => {
