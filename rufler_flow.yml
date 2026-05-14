@@ -3,7 +3,7 @@
 
 project:
   name: product-tracker
-  description: Internal SMG web app for tracking product hypotheses across the discovery funnel.
+  description: Product discovery web app for organizations tracking hypotheses across the discovery funnel.
 
 memory:
   backend: hybrid                 # hybrid | sqlite | agentdb

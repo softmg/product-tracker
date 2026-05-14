@@ -81,7 +81,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 pb-4">
           <CardTitle className="text-lg">Вход</CardTitle>
           <CardDescription>
-            {ssoEnabled ? "Используйте корпоративный SSO или локальный пароль" : "Используйте ваш email и пароль для входа"}
+            {ssoEnabled ? "Используйте SSO вашей организации или локальный пароль" : "Используйте ваш email и пароль для входа"}
           </CardDescription>
         </CardHeader>
         <CardContent>

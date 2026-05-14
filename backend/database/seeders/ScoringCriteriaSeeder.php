@@ -49,8 +49,8 @@ class ScoringCriteriaSeeder extends Seeder
                 'order' => 3,
             ],
             [
-                'name' => 'SMG competence fit',
-                'description' => 'How well hypothesis matches SMG competencies',
+                'name' => 'Organization competence fit',
+                'description' => 'How well hypothesis matches the organization competencies',
                 'input_type' => 'slider',
                 'min_value' => 1,
                 'max_value' => 5,
@@ -169,8 +169,8 @@ class ScoringCriteriaSeeder extends Seeder
                 'order' => 6,
             ],
             [
-                'name' => 'SMG competence fit',
-                'description' => 'How well hypothesis matches SMG competencies',
+                'name' => 'Organization competence fit',
+                'description' => 'How well hypothesis matches the organization competencies',
                 'input_type' => 'slider',
                 'min_value' => 1,
                 'max_value' => 5,

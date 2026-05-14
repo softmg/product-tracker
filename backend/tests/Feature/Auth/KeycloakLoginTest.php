@@ -31,7 +31,7 @@ class KeycloakLoginTest extends TestCase
     public function test_keycloak_callback_provisions_admin_and_logs_user_in(): void
     {
         $this->configureKeycloak([
-            'keycloak.admin_emails' => ['admin@softmg.tech'],
+            'keycloak.admin_emails' => ['admin@example.org'],
             'keycloak.frontend_url' => 'https://producttracker.test',
         ]);
 
@@ -41,7 +41,7 @@ class KeycloakLoginTest extends TestCase
             ]),
             'https://keycloak.test/realms/product-tracker/protocol/openid-connect/userinfo' => Http::response([
                 'sub' => 'keycloak-user-1',
-                'email' => 'admin@softmg.tech',
+                'email' => 'admin@example.org',
                 'email_verified' => true,
                 'name' => 'SSO Admin',
             ]),
@@ -52,7 +52,7 @@ class KeycloakLoginTest extends TestCase
             ->get('/api/v1/auth/keycloak/callback?code=auth-code&state=expected-state')
             ->assertRedirect('https://producttracker.test/dashboard');
 
-        $user = User::query()->where('email', 'admin@softmg.tech')->firstOrFail();
+        $user = User::query()->where('email', 'admin@example.org')->firstOrFail();
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::Admin, $user->role);
@@ -87,7 +87,7 @@ class KeycloakLoginTest extends TestCase
             'keycloak.client_id' => 'product-tracker',
             'keycloak.client_secret' => 'secret',
             'keycloak.redirect_uri' => 'https://producttracker.test/api/v1/auth/keycloak/callback',
-            'keycloak.allowed_domains' => ['softmg.tech'],
+            'keycloak.allowed_domains' => ['example.org'],
             'keycloak.admin_emails' => [],
             'keycloak.auto_provision' => true,
             'keycloak.default_role' => UserRole::Initiator->value,

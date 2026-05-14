@@ -23,7 +23,7 @@ const primaryCriteria = [
   { id: 'crit-tam', name: 'TAM (Total Addressable Market)', weight: 0.15, maxScore: 5 },
   { id: 'crit-som', name: 'SOM (Serviceable Obtainable Market)', weight: 0.15, maxScore: 5 },
   { id: 'crit-market-potential', name: 'Рыночный потенциал', weight: 0.20, maxScore: 5 },
-  { id: 'crit-competency-fit', name: 'Соответствие компетенциям SMG', weight: 0.15, maxScore: 5 },
+  { id: 'crit-competency-fit', name: 'Соответствие компетенциям организации', weight: 0.15, maxScore: 5 },
   { id: 'crit-resource-cost', name: 'Ресурсоёмкость проверки', weight: 0.15, maxScore: 5 },
   { id: 'crit-strategic-fit', name: 'Стратегический fit', weight: 0.20, maxScore: 5 },
 ]
