@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { MoreHorizontal, Eye, Pencil, Archive, ArrowRight, ArrowLeft, User, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react"
+import { MoreHorizontal, Eye, Pencil, Archive, ArrowRight, User, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,9 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
+import { getUserById } from "@/lib/mock-data"
 import type { Hypothesis, HypothesisStatus, SLAConfig } from "@/lib/types"
 
 const statusDisplayInfo: Record<HypothesisStatus, { label: string; colorClass: string }> = {
@@ -41,11 +41,6 @@ interface HypothesisKanbanProps {
   hypotheses: Hypothesis[]
   ownerNamesById?: Record<string, string>
   onDelete?: (id: string) => void
-}
-
-interface KanbanCardProps {
-  hypothesis: Hypothesis
-  ownerNamesById?: Record<string, string>
 }
 
 interface HypothesisKanbanProps {
@@ -91,7 +86,7 @@ function getSLAStatus(hypothesis: Hypothesis): { status: SLAStatus; daysText: st
   const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   
   // Get SLA config for current status
-  const slaConfig = mockSLAConfigs.find(c => c.status === hypothesis.status)
+  const slaConfig = defaultSLAConfigs.find((c) => c.status === hypothesis.status)
   const warningDays = slaConfig?.warningDays || 3
   
   const formatDate = (date: Date) => {
@@ -297,9 +292,9 @@ export function HypothesisKanban({ hypotheses }: HypothesisKanbanProps) {
       scoring: [],
       deep_dive: [],
       experiment: [],
-      analysis: [],
       go_no_go: [],
       done: [],
+      archived: [],
     }
     
     hypotheses.forEach(h => {

@@ -76,9 +76,9 @@ const allStatuses: HypothesisStatus[] = [
   "scoring",
   "deep_dive",
   "experiment",
-  "analysis",
   "go_no_go",
   "done",
+  "archived",
 ]
 
 const statusLabelsRu: Record<HypothesisStatus, string> = {
@@ -86,9 +86,9 @@ const statusLabelsRu: Record<HypothesisStatus, string> = {
   scoring: "Скоринг",
   deep_dive: "Deep Dive",
   experiment: "Эксперимент",
-  analysis: "Анализ",
   go_no_go: "Питч",
-  done: "Архив",
+  done: "Done",
+  archived: "Архив",
 }
 
 const parsePrefixedId = (value: string | undefined, prefix: string): string | null => {

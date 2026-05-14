@@ -8,7 +8,6 @@ import {
   ArrowRight, 
   Clock, 
   FileText,
-  Users,
   Target,
   FlaskConical,
   Vote,
@@ -47,15 +46,14 @@ const STATUS_FLOW: Record<HypothesisStatus, {
   backlog: { next: 'scoring', prev: null, label: 'Идея', icon: FileText },
   scoring: { next: 'deep_dive', prev: 'backlog', label: 'Первичный скоринг', icon: Target },
   deep_dive: { next: 'experiment', prev: 'scoring', label: 'Deep Dive', icon: FlaskConical },
-  experiment: { next: 'analysis', prev: 'deep_dive', label: 'Эксперимент', icon: FlaskConical },
-  analysis: { next: 'go_no_go', prev: 'experiment', label: 'Питч на ПК', icon: Users },
-  go_no_go: { next: 'done', prev: 'analysis', label: 'Решение принято', icon: Vote },
-  done: { next: null, prev: null, label: 'Архив', icon: Archive },
+  experiment: { next: 'go_no_go', prev: 'deep_dive', label: 'Эксперимент', icon: FlaskConical },
+  go_no_go: { next: 'done', prev: 'experiment', label: 'Питч на ПК', icon: Vote },
+  done: { next: null, prev: null, label: 'Done', icon: CheckCircle2 },
+  archived: { next: null, prev: null, label: 'Архив', icon: Archive },
 }
 
 // Thresholds (would come from admin settings in real app)
 const SCORING_THRESHOLD = 7.0
-const DEEP_SCORING_THRESHOLD = 7.5
 
 interface StatusTransitionPanelProps {
   hypothesis: Hypothesis
@@ -178,7 +176,7 @@ export function StatusTransitionPanel({
           },
         ]
       
-      case 'analysis': // Питч -> Решение принято
+      case 'go_no_go': // Питч -> Решение принято
         const hasVotes = hypothesis.committeeVotes && hypothesis.committeeVotes.length > 0
         const votesCount = hypothesis.committeeVotes?.filter(v => v.vote !== null).length || 0
         const totalMembers = 5 // Would come from admin settings
@@ -213,25 +211,6 @@ export function StatusTransitionPanel({
             id: 'voting_done',
             label: 'Голосование завершено',
             isMet: !!hasVotes && quorumReached
-          },
-        ]
-      
-      case 'go_no_go': // Решение принято -> Архив или обратно
-        return [
-          { 
-            id: 'decision', 
-            label: 'Зафиксировано итоговое решение', 
-            isMet: !!hypothesis.decision?.result 
-          },
-          { 
-            id: 'comment', 
-            label: 'Добавлен комментарий комитета', 
-            isMet: !!hypothesis.decision?.comment 
-          },
-          { 
-            id: 'next_step', 
-            label: 'Определен следующий шаг', 
-            isMet: !!hypothesis.decision?.actionPlan || !!hypothesis.decision?.result
           },
         ]
       
@@ -303,8 +282,10 @@ export function StatusTransitionPanel({
 
   const votingSummary = getVotingSummary()
 
-  // Archive status - read only
-  if (currentStatus === 'done') {
+  // Terminal statuses - read only
+  if (currentStatus === 'done' || currentStatus === 'archived') {
+    const isArchived = currentStatus === 'archived'
+
     return (
       <Card>
         <CardHeader>
@@ -312,9 +293,9 @@ export function StatusTransitionPanel({
             <div className="flex items-center gap-3">
               <Archive className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-lg">Архив</CardTitle>
+                <CardTitle className="text-lg">{isArchived ? 'Архив' : 'Done'}</CardTitle>
                 <CardDescription>
-                  Закрыта: {hypothesis.updatedAt ? new Date(hypothesis.updatedAt).toLocaleDateString('ru-RU') : '-'}
+                  {isArchived ? 'Архивирована' : 'Закрыта'}: {hypothesis.updatedAt ? new Date(hypothesis.updatedAt).toLocaleDateString('ru-RU') : '-'}
                 </CardDescription>
               </div>
             </div>
@@ -406,8 +387,7 @@ export function StatusTransitionPanel({
                   {currentStatus === 'scoring' && 'Результат первичного скоринга:'}
                   {currentStatus === 'deep_dive' && 'Полнота обязательного Deep Dive чек-листа:'}
                   {currentStatus === 'experiment' && 'Условия перехода в «Питч»:'}
-                  {currentStatus === 'analysis' && 'Готовность к голосованию:'}
-                  {currentStatus === 'go_no_go' && 'Обязательные поля перед завершением:'}
+                  {currentStatus === 'go_no_go' && 'Готовность к голосованию:'}
                 </p>
                 <span className="text-sm text-muted-foreground">
                   {metCount}/{conditions.length}
@@ -475,8 +455,7 @@ export function StatusTransitionPanel({
                     </>
                   )}
                   {currentStatus === 'experiment' && 'Не выполнены все условия для перехода к питчу'}
-                  {currentStatus === 'analysis' && 'Голосование не завершено или не достигнут кворум'}
-                  {currentStatus === 'go_no_go' && 'Необходимо зафиксировать решение и определить следующий шаг'}
+                  {currentStatus === 'go_no_go' && 'Голосование не завершено или не достигнут кворум'}
                 </AlertDescription>
               </Alert>
             </>
@@ -522,7 +501,7 @@ export function StatusTransitionPanel({
               </>
             )}
             
-            {currentStatus === 'analysis' && (
+            {currentStatus === 'go_no_go' && (
               <>
                 <Button variant="outline" size="sm" onClick={() => onTabChange?.('committee')}>
                   Открыть голосование
@@ -544,8 +523,7 @@ export function StatusTransitionPanel({
                 {currentStatus === 'scoring' && 'Перевести в Deep Dive'}
                 {currentStatus === 'deep_dive' && 'Перевести в «Эксперимент»'}
                 {currentStatus === 'experiment' && 'Вынести на продуктовый комитет'}
-                {currentStatus === 'analysis' && 'Зафиксировать «Решение принято»'}
-                {currentStatus === 'go_no_go' && 'Выполнить переход'}
+                {currentStatus === 'go_no_go' && 'Зафиксировать «Решение принято»'}
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}

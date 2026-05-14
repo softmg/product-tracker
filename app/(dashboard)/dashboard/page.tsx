@@ -66,9 +66,9 @@ const hypothesisStatuses: HypothesisStatus[] = [
   "scoring",
   "deep_dive",
   "experiment",
-  "analysis",
   "go_no_go",
   "done",
+  "archived",
 ]
 
 // Russian status labels
@@ -77,9 +77,9 @@ const statusLabelsRu: Record<HypothesisStatus, string> = {
   scoring: "Скоринг",
   deep_dive: "Deep Dive",
   experiment: "Эксперимент",
-  analysis: "Анализ",
   go_no_go: "Питч",
-  done: "Архив",
+  done: "Done",
+  archived: "Архив",
 }
 
 // Russian role labels
@@ -98,9 +98,9 @@ const statusBarClassByStatus: Record<HypothesisStatus, string> = {
   scoring: "bg-purple-500",
   deep_dive: "bg-blue-500",
   experiment: "bg-cyan-500",
-  analysis: "bg-amber-500",
   go_no_go: "bg-orange-500",
   done: "bg-emerald-500",
+  archived: "bg-slate-400",
 }
 
 function isHypothesisStatus(value: string): value is HypothesisStatus {
@@ -143,9 +143,7 @@ function getActionHint(hypothesis: DashboardHypothesis, userRole: UserRole): str
     case "deep_dive":
       return "Заполни чек-лист"
     case "experiment":
-      return "Внеси результаты"
-    case "analysis":
-      return "Подготовь к питчу"
+      return "Внеси результаты и подготовь к питчу"
     case "go_no_go":
       return userRole === "admin" ? "Ожидает голосования" : "На голосовании ПК"
     default:
@@ -288,9 +286,9 @@ export default function DashboardPage() {
       scoring: 0,
       deep_dive: 0,
       experiment: 0,
-      analysis: 0,
       go_no_go: 0,
       done: 0,
+      archived: 0,
     }
 
     userHypotheses.forEach((h) => {
