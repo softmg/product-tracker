@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
 import { allSettled, fork } from "effector"
 
 const mockTeam = {
@@ -14,14 +14,25 @@ const mockGet = vi.fn()
 const mockPost = vi.fn()
 const mockPut = vi.fn()
 const mockDelete = vi.fn()
+const originalUseMocks = process.env.NEXT_PUBLIC_USE_MOCKS
 
 describe("admin teams store", () => {
   beforeEach(async () => {
+    process.env.NEXT_PUBLIC_USE_MOCKS = "false"
+
     vi.clearAllMocks()
     vi.resetModules()
     vi.doMock("@/lib/api-client", () => ({
       apiClient: { get: mockGet, post: mockPost, put: mockPut, delete: mockDelete },
     }))
+  })
+
+  afterAll(() => {
+    if (originalUseMocks === undefined) {
+      delete process.env.NEXT_PUBLIC_USE_MOCKS
+    } else {
+      process.env.NEXT_PUBLIC_USE_MOCKS = originalUseMocks
+    }
   })
 
   it("fetchTeamsFx populates $teams store", async () => {
@@ -32,8 +43,21 @@ describe("admin teams store", () => {
 
     await allSettled(fetchTeamsFx, { scope })
 
+    expect(mockGet).toHaveBeenCalledWith("/api/v1/teams")
     expect(scope.getState($teams)).toHaveLength(1)
     expect(scope.getState($teams)[0].member_count).toBe(2)
+  })
+
+  it("fetchTeamsFx uses mock teams when mock mode is enabled", async () => {
+    process.env.NEXT_PUBLIC_USE_MOCKS = "true"
+
+    const { fetchTeamsFx, $teams } = await import("../teams")
+    const scope = fork()
+
+    await allSettled(fetchTeamsFx, { scope })
+
+    expect(mockGet).not.toHaveBeenCalled()
+    expect(scope.getState($teams).length).toBeGreaterThan(0)
   })
 
   it("createTeamFx appends a new team to $teams", async () => {

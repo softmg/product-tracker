@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
+import { $teams, $teamsLoading, fetchTeamsFx } from "@/lib/stores/admin/teams"
 import { $hypotheses, createHypothesisFx, fetchHypothesesFx } from "@/lib/stores/hypotheses/model"
 
 type Priority = "low" | "medium" | "high"
@@ -36,6 +37,8 @@ export default function NewHypothesisPage() {
   const router = useRouter()
   const { hasPermission, user } = useAuth()
   const hypotheses = useUnit($hypotheses)
+  const teams = useUnit($teams)
+  const teamsLoading = useUnit($teamsLoading)
   const canCreateHypothesis = hasPermission("hypothesis:create")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -54,22 +57,15 @@ export default function NewHypothesisPage() {
       return
     }
 
+    void fetchTeamsFx()
     void fetchHypothesesFx({ per_page: 200 })
   }, [canCreateHypothesis])
 
   const teamOptions = useMemo(() => {
-    const map = new Map<string, string>()
-
-    for (const hypothesis of hypotheses) {
-      if (hypothesis.team) {
-        map.set(String(hypothesis.team.id), hypothesis.team.name || `Команда ${hypothesis.team.id}`)
-      }
-    }
-
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
+    return teams
+      .map((team) => ({ id: String(team.id), name: team.name || `Команда ${team.id}` }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypotheses])
+  }, [teams])
 
   const ownerOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -255,7 +251,11 @@ export default function NewHypothesisPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="team">Команда *</Label>
-                    <Select value={teamSelectValue} onValueChange={(value) => setSelectedTeamId(value === "none" ? "" : value)}>
+                    <Select
+                      value={teamSelectValue}
+                      onValueChange={(value) => setSelectedTeamId(value === "none" ? "" : value)}
+                      disabled={teamsLoading}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите команду" />
                       </SelectTrigger>
@@ -267,7 +267,9 @@ export default function NewHypothesisPage() {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="none">Нет доступных команд</SelectItem>
+                          <SelectItem value="none" disabled>
+                            {teamsLoading ? "Загрузка команд..." : "Нет доступных команд"}
+                          </SelectItem>
                         )}
                       </SelectContent>
                     </Select>

@@ -43,6 +43,8 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('teams', [TeamController::class, 'index']);
+
         Route::apiResource('hypotheses', HypothesisController::class);
         Route::get('hypotheses/{hypothesis}/transitions', [HypothesisStatusController::class, 'transitions']);
         Route::post('hypotheses/{hypothesis}/transition', [HypothesisStatusController::class, 'transition']);

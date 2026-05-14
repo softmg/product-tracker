@@ -40,6 +40,29 @@ class TeamManagementTest extends TestCase
             ]);
     }
 
+    public function test_authenticated_user_can_list_teams(): void
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::Initiator,
+            'team_id' => null,
+        ]);
+
+        $team = Team::factory()->create([
+            'name' => 'Research',
+        ]);
+
+        $response = $this
+            ->actingAs($user, 'web')
+            ->getJson('/api/v1/teams');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $team->id)
+            ->assertJsonPath('data.0.name', 'Research')
+            ->assertJsonPath('data.0.member_count', 0)
+            ->assertJsonPath('data.0.hypotheses_count', 0);
+    }
+
     public function test_admin_can_create_team(): void
     {
         $admin = User::factory()->create([
