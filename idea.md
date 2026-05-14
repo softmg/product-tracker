@@ -2,10 +2,17 @@
 
 ## Подходящий skill
 
-Для описания идеи использован подход `product-discovery` из skills.sh:
+Основной skill для этой идеи и дальнейшего ведения discovery-процесса:
+`discovery-process` из skills.sh:
+https://www.skills.sh/deanpeters/product-manager-skills/discovery-process
+
+Причина выбора: Product Tracker - это система управления discovery-воронкой, а `discovery-process` задаёт полный процесс от problem hypothesis до validated solution: framing, интервью, синтез, эксперименты и решение build/pivot/kill. Он лучше подходит как основной skill для запуска и контроля идеи.
+
+Дополнительный справочный skill:
+`product-discovery`:
 https://skills.sh/majiayu000/claude-arsenal/product-discovery
 
-Причина выбора: skill требует начинать с проблемы и ожидаемого исхода, фиксировать проверяемые предположения и заранее назначать роли discovery. Это ближе к форме создания гипотезы в Product Tracker, чем PRD-first подход.
+Его стоит использовать как библиотеку фреймворков: JTBD, Kano, Value Proposition Canvas, TAM/SAM/SOM и competitive analysis.
 
 ## Как заполнить форму идеи на примере этого проекта
 

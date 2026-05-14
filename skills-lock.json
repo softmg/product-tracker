@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "discovery-process": {
+      "source": "deanpeters/product-manager-skills",
+      "sourceType": "github",
+      "skillPath": "skills/discovery-process/SKILL.md",
+      "computedHash": "1db1d23099231123a479df8f9a58fc5f4a7ed6a57ee7ebbf1653843303518ede"
+    },
     "product-discovery": {
       "source": "majiayu000/claude-arsenal",
       "sourceType": "github",
