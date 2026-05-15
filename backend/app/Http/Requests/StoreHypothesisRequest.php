@@ -27,6 +27,7 @@ class StoreHypothesisRequest extends FormRequest
             'solution' => ['nullable', 'string'],
             'assumptions' => ['nullable', 'string'],
             'target_audience' => ['nullable', 'string'],
+            'owner_id' => ['nullable', 'integer', 'exists:users,id'],
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'priority' => ['nullable', new Enum(Priority::class)],
         ];

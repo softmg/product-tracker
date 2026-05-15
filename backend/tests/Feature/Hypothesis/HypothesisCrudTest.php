@@ -34,6 +34,9 @@ class HypothesisCrudTest extends TestCase
         $user = User::factory()->create([
             'role' => UserRole::Initiator,
         ]);
+        $owner = User::factory()->create([
+            'role' => UserRole::PdManager,
+        ]);
 
         $response = $this
             ->actingAs($user, 'web')
@@ -41,12 +44,14 @@ class HypothesisCrudTest extends TestCase
                 'title' => 'Test hypothesis',
                 'description' => 'Test description',
                 'problem' => 'Test problem',
+                'owner_id' => $owner->id,
             ]);
 
         $response
             ->assertCreated()
             ->assertJsonPath('data.status', HypothesisStatus::Backlog->value)
-            ->assertJsonPath('data.initiator.id', $user->id);
+            ->assertJsonPath('data.initiator.id', $user->id)
+            ->assertJsonPath('data.owner.id', $owner->id);
 
         $this->assertStringStartsWith('HYP-', $response->json('data.code'));
     }

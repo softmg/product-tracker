@@ -1,10 +1,11 @@
 import { combine, createEffect, createEvent, createStore, sample } from "effector"
 import { apiClient } from "@/lib/api-client"
-import { mockHypotheses } from "@/lib/mock-data"
+import { mockHypotheses, mockUsers } from "@/lib/mock-data"
 import type {
   ApiHypothesisDetail,
   ApiHypothesisList,
   ApiPaginationMeta,
+  ApiUserRef,
   CreateHypothesisParams,
   FetchHypothesesParams,
   TransitionHypothesisParams,
@@ -20,6 +21,33 @@ if (!useHypothesisMocks && !hypothesisApiUrl) {
 
 export const isHypothesisMockMode = useHypothesisMocks
 
+const parseMockNumericId = (id: string): number => {
+  const parsed = Number.parseInt(id.replace(/^[a-z]+-/, ""), 10)
+
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+const mapMockUserToApiRef = (id: number | string | null | undefined): ApiUserRef | null => {
+  if (id === null || id === undefined || id === "") {
+    return null
+  }
+
+  const numericId = typeof id === "number" ? id : parseMockNumericId(id)
+
+  if (numericId <= 0) {
+    return null
+  }
+
+  const user = mockUsers.find((candidate) => parseMockNumericId(candidate.id) === numericId)
+
+  return {
+    id: numericId,
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    role: user?.role ?? "initiator",
+  }
+}
+
 // Map mock hypothesis to API list shape
 const mapMockToApiList = (h: (typeof mockHypotheses)[number]): ApiHypothesisList => ({
   id: Number.parseInt(h.id.replace("hyp-", ""), 10) || 0,
@@ -28,9 +56,7 @@ const mapMockToApiList = (h: (typeof mockHypotheses)[number]): ApiHypothesisList
   status: h.status,
   priority: null,
   initiator: null,
-  owner: h.ownerId
-    ? { id: Number.parseInt(h.ownerId.replace("user-", ""), 10) || 0, name: "", email: "", role: "initiator" as const }
-    : null,
+  owner: mapMockUserToApiRef(h.ownerId),
   team: h.teamId
     ? { id: Number.parseInt(h.teamId.replace("team-", ""), 10) || 0, name: "" }
     : null,
@@ -128,6 +154,7 @@ export const createHypothesisFx = createEffect(async (params: CreateHypothesisPa
     await new Promise((resolve) => setTimeout(resolve, 300))
     const newId = mockHypotheses.length + mockCreatedHypotheses.length + 1
     const createdAt = new Date().toISOString()
+    const owner = mapMockUserToApiRef(params.owner_id)
     const created: ApiHypothesisDetail = {
       id: newId,
       code: `HYP-${String(newId).padStart(3, "0")}`,
@@ -135,7 +162,7 @@ export const createHypothesisFx = createEffect(async (params: CreateHypothesisPa
       status: "backlog",
       priority: params.priority ?? null,
       initiator: null,
-      owner: null,
+      owner,
       team: null,
       scoring_primary: null,
       scoring_deep: null,
@@ -148,7 +175,7 @@ export const createHypothesisFx = createEffect(async (params: CreateHypothesisPa
       assumptions: params.assumptions ?? null,
       target_audience: params.target_audience ?? null,
       initiator_id: null,
-      owner_id: null,
+      owner_id: owner?.id ?? null,
       team_id: params.team_id ?? null,
     }
 

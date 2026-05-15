@@ -46,6 +46,9 @@ export default function NewHypothesisPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>("")
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("")
 
+  const defaultTeamId = parsePrefixedId(user?.teamId, "team-")
+  const defaultOwnerId = parsePrefixedId(user?.id, "user-")
+
   useEffect(() => {
     if (!canCreateHypothesis) {
       router.replace("/hypotheses")
@@ -70,6 +73,10 @@ export default function NewHypothesisPage() {
   const ownerOptions = useMemo(() => {
     const map = new Map<string, string>()
 
+    if (defaultOwnerId) {
+      map.set(defaultOwnerId, user?.name || user?.email || `Пользователь ${defaultOwnerId}`)
+    }
+
     for (const hypothesis of hypotheses) {
       if (hypothesis.owner) {
         map.set(
@@ -82,10 +89,7 @@ export default function NewHypothesisPage() {
     return Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypotheses])
-
-  const defaultTeamId = parsePrefixedId(user?.teamId, "team-")
-  const defaultOwnerId = parsePrefixedId(user?.id, "user-")
+  }, [defaultOwnerId, hypotheses, user?.email, user?.name])
 
   useEffect(() => {
     if (selectedTeamId) {
@@ -132,6 +136,7 @@ export default function NewHypothesisPage() {
         target_audience: String(data.get("audience") ?? "") || undefined,
         priority,
         team_id: selectedTeamId ? Number(selectedTeamId) : undefined,
+        owner_id: selectedOwnerId ? Number(selectedOwnerId) : undefined,
       })
 
       router.push(`/hypotheses/${result.id}`)
@@ -292,7 +297,9 @@ export default function NewHypothesisPage() {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="none">Нет доступных владельцев</SelectItem>
+                          <SelectItem value="none" disabled>
+                            Нет доступных владельцев
+                          </SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -303,7 +310,7 @@ export default function NewHypothesisPage() {
                   <Button type="button" variant="outline" asChild>
                     <Link href="/hypotheses">Отмена</Link>
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isSubmitting || !selectedOwnerId}>
                     {isSubmitting ? "Создание..." : "Создать гипотезу"}
                   </Button>
                 </div>

@@ -44,6 +44,7 @@ describe("hypotheses store env resolution", () => {
     vi.stubEnv("NEXT_PUBLIC_API_URL", "")
 
     vi.doMock("@/lib/mock-data", () => ({
+      mockUsers: [],
       mockHypotheses: [
         {
           id: "hyp-1",
@@ -78,7 +79,7 @@ describe("hypotheses store env resolution", () => {
     vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
     vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
 
-    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [] }))
+    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [], mockUsers: [] }))
     mockGet.mockResolvedValueOnce({ data: { data: [mockHypothesis], meta: mockMeta } })
 
     const { fetchHypothesesFx, isHypothesisMockMode } = await import("../model")
@@ -98,11 +99,46 @@ describe("hypotheses store env resolution", () => {
     vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "false")
     vi.stubEnv("NEXT_PUBLIC_API_URL", "")
 
-    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [] }))
+    vi.doMock("@/lib/mock-data", () => ({ mockHypotheses: [], mockUsers: [] }))
 
     await expect(import("../model")).rejects.toThrow(
       "NEXT_PUBLIC_API_URL must be set when NEXT_PUBLIC_USE_MOCKS is false (hypotheses store)",
     )
+  })
+
+  it("keeps selected owner when creating in mock mode", async () => {
+    vi.stubEnv("NEXT_PUBLIC_USE_MOCKS", "true")
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "")
+
+    vi.doMock("@/lib/mock-data", () => ({
+      mockHypotheses: [],
+      mockUsers: [
+        {
+          id: "user-2",
+          name: "Maria Petrova",
+          email: "po@company.com",
+          role: "pd_manager",
+          teamId: "team-2",
+          isActive: true,
+          createdAt: "2024-01-05",
+        },
+      ],
+    }))
+
+    const { createHypothesisFx } = await import("../model")
+    const scope = fork()
+
+    const result = await allSettled(createHypothesisFx, {
+      scope,
+      params: { title: "New hypothesis", owner_id: 2 },
+    })
+
+    expect(result.status).toBe("done")
+    if (result.status === "done") {
+      expect(result.value.owner_id).toBe(2)
+      expect(result.value.owner?.name).toBe("Maria Petrova")
+    }
+    expect(mockPost).not.toHaveBeenCalled()
   })
 })
 
@@ -118,6 +154,7 @@ describe("hypotheses store", () => {
     }))
     vi.doMock("@/lib/mock-data", () => ({
       mockHypotheses: [],
+      mockUsers: [],
     }))
   })
 
@@ -158,7 +195,7 @@ describe("hypotheses store", () => {
       solution: null,
       target_audience: null,
       initiator_id: 1,
-      owner_id: null,
+      owner_id: 2,
       team_id: null,
     }
     mockPost.mockResolvedValueOnce({ data: { data: newHypothesis } })
@@ -168,10 +205,10 @@ describe("hypotheses store", () => {
 
     const result = await allSettled(createHypothesisFx, {
       scope,
-      params: { title: "New hypothesis" },
+      params: { title: "New hypothesis", owner_id: 2 },
     })
 
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/hypotheses", { title: "New hypothesis" })
+    expect(mockPost).toHaveBeenCalledWith("/api/v1/hypotheses", { title: "New hypothesis", owner_id: 2 })
     expect(result.status).toBe("done")
   })
 

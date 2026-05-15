@@ -65,6 +65,7 @@ export interface CreateHypothesisParams {
   solution?: string
   assumptions?: string
   target_audience?: string
+  owner_id?: number
   team_id?: number
   priority?: "low" | "medium" | "high"
 }
