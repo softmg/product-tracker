@@ -94,7 +94,7 @@ const mockApi = async (page: Page) => {
 }
 
 test.describe("Hypothesis team selector", () => {
-  test("shows an admin-created team when the public teams route is stale", async ({ page }) => {
+  test("can select an admin-created team when the public teams route is stale", async ({ page }) => {
     await mockApi(page)
 
     await page.goto("/login")
@@ -116,7 +116,10 @@ test.describe("Hypothesis team selector", () => {
     await page.goto("/hypotheses/new")
     await expect(page.getByRole("heading", { name: "Создать гипотезу" })).toBeVisible()
 
-    await page.getByLabel("Команда *").click()
-    await expect(page.getByRole("option", { name: teamName })).toBeVisible()
+    const teamSelect = page.getByLabel("Команда *")
+
+    await teamSelect.click()
+    await page.getByRole("option", { name: teamName }).click()
+    await expect(teamSelect).toContainText(teamName)
   })
 })
