@@ -61,6 +61,74 @@ class KeycloakLoginTest extends TestCase
         $this->assertNotNull($user->last_login_at);
     }
 
+    public function test_keycloak_callback_provisions_role_from_realm_role_mapping(): void
+    {
+        $this->configureKeycloak();
+
+        Http::fake([
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/token' => Http::response([
+                'access_token' => $this->fakeJwt([
+                    'realm_access' => [
+                        'roles' => ['default-roles-product-tracker', 'producttracker-bizdev'],
+                    ],
+                ]),
+            ]),
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/userinfo' => Http::response([
+                'sub' => 'keycloak-user-2',
+                'email' => 'bizdev@example.org',
+                'email_verified' => true,
+                'name' => 'SSO BizDev',
+            ]),
+        ]);
+
+        $this
+            ->withSession(['keycloak_oauth_state' => 'expected-state'])
+            ->get('/api/v1/auth/keycloak/callback?code=auth-code&state=expected-state')
+            ->assertRedirect('https://producttracker.test/dashboard');
+
+        $user = User::query()->where('email', 'bizdev@example.org')->firstOrFail();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame(UserRole::BizDev, $user->role);
+    }
+
+    public function test_keycloak_callback_syncs_existing_user_role_from_role_mapping(): void
+    {
+        $this->configureKeycloak();
+
+        $user = User::factory()->create([
+            'email' => 'existing-bizdev@example.org',
+            'role' => UserRole::Initiator,
+        ]);
+
+        Http::fake([
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/token' => Http::response([
+                'access_token' => 'access-token',
+            ]),
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/userinfo' => Http::response([
+                'sub' => 'keycloak-user-3',
+                'email' => 'existing-bizdev@example.org',
+                'email_verified' => true,
+                'name' => 'Existing BizDev',
+                'resource_access' => [
+                    'product-tracker' => [
+                        'roles' => ['producttracker-bizdev'],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $this
+            ->withSession(['keycloak_oauth_state' => 'expected-state'])
+            ->get('/api/v1/auth/keycloak/callback?code=auth-code&state=expected-state')
+            ->assertRedirect('https://producttracker.test/dashboard');
+
+        $this->assertAuthenticatedAs($user->refresh());
+        $this->assertSame(UserRole::BizDev, $user->role);
+        $this->assertSame('keycloak', $user->sso_provider);
+        $this->assertSame('keycloak-user-3', $user->sso_subject);
+    }
+
     public function test_keycloak_callback_rejects_invalid_state(): void
     {
         $this->configureKeycloak([
@@ -91,9 +159,27 @@ class KeycloakLoginTest extends TestCase
             'keycloak.admin_emails' => [],
             'keycloak.auto_provision' => true,
             'keycloak.default_role' => UserRole::Initiator->value,
+            'keycloak.role_mappings' => [],
             'keycloak.require_verified_email' => false,
             'keycloak.frontend_url' => 'https://producttracker.test',
             ...$overrides,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $claims
+     */
+    private function fakeJwt(array $claims): string
+    {
+        return implode('.', [
+            $this->base64UrlEncode((string) json_encode(['alg' => 'none'])),
+            $this->base64UrlEncode((string) json_encode($claims)),
+            '',
+        ]);
+    }
+
+    private function base64UrlEncode(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
     }
 }

@@ -11,6 +11,24 @@ $csv = static function (string $key): array {
     )));
 };
 
+$mappings = static function (string $key): array {
+    $value = (string) env($key, '');
+    $items = array_filter(array_map('trim', explode(',', $value)));
+    $result = [];
+
+    foreach ($items as $item) {
+        [$externalRole, $userRole] = array_pad(explode('=', $item, 2), 2, '');
+        $externalRole = strtolower(trim($externalRole));
+        $userRole = strtolower(trim($userRole));
+
+        if ($externalRole !== '' && $userRole !== '') {
+            $result[$externalRole] = $userRole;
+        }
+    }
+
+    return $result;
+};
+
 return [
     'enabled' => env('KEYCLOAK_ENABLED', false),
     'base_url' => rtrim((string) env('KEYCLOAK_BASE_URL', ''), '/'),
@@ -23,5 +41,6 @@ return [
     'admin_emails' => $csv('KEYCLOAK_ADMIN_EMAILS'),
     'auto_provision' => env('KEYCLOAK_AUTO_PROVISION', true),
     'default_role' => env('KEYCLOAK_DEFAULT_ROLE', 'initiator'),
+    'role_mappings' => $mappings('KEYCLOAK_ROLE_MAPPINGS'),
     'require_verified_email' => env('KEYCLOAK_REQUIRE_VERIFIED_EMAIL', false),
 ];

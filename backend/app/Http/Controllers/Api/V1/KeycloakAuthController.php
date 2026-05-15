@@ -87,6 +87,8 @@ class KeycloakAuthController extends Controller
             return $this->redirectToLogin('sso_token');
         }
 
+        $accessTokenClaims = $this->accessTokenClaims($accessToken);
+
         $userInfoResponse = Http::withToken($accessToken)
             ->acceptJson()
             ->timeout(10)
@@ -105,6 +107,8 @@ class KeycloakAuthController extends Controller
         if (! is_array($claims)) {
             return $this->redirectToLogin('sso_profile');
         }
+
+        $claims = array_replace_recursive($accessTokenClaims, $claims);
 
         $user = $this->resolveUser($claims);
         if (! $user instanceof User) {
@@ -170,7 +174,13 @@ class KeycloakAuthController extends Controller
             'last_login_at' => now(),
         ];
 
+        $ssoRole = $this->ssoRole($email, $claims);
+
         if ($user instanceof User) {
+            if ($ssoRole instanceof UserRole) {
+                $attributes['role'] = $ssoRole;
+            }
+
             $user->fill($attributes);
             $user->save();
 
@@ -184,19 +194,142 @@ class KeycloakAuthController extends Controller
         return User::query()->create([
             ...$attributes,
             'password' => Hash::make(Str::random(64)),
-            'role' => $this->provisionedRole($email),
+            'role' => $ssoRole ?? $this->defaultProvisionedRole(),
             'is_active' => true,
         ]);
     }
 
-    private function provisionedRole(string $email): UserRole
+    private function ssoRole(string $email, array $claims): ?UserRole
     {
         $adminEmails = config('keycloak.admin_emails', []);
         if (is_array($adminEmails) && in_array(strtolower($email), $adminEmails, true)) {
             return UserRole::Admin;
         }
 
+        return $this->mappedKeycloakRole($claims);
+    }
+
+    private function defaultProvisionedRole(): UserRole
+    {
         return UserRole::tryFrom((string) config('keycloak.default_role')) ?? UserRole::Initiator;
+    }
+
+    private function mappedKeycloakRole(array $claims): ?UserRole
+    {
+        $claimRoles = $this->claimRoles($claims);
+        if ($claimRoles === []) {
+            return null;
+        }
+
+        foreach ($this->keycloakRoleMappings() as $keycloakRole => $userRole) {
+            if (in_array($keycloakRole, $claimRoles, true)) {
+                return $userRole;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, UserRole>
+     */
+    private function keycloakRoleMappings(): array
+    {
+        $mappings = [];
+        $configured = config('keycloak.role_mappings', []);
+
+        if (is_array($configured)) {
+            foreach ($configured as $externalRole => $userRole) {
+                if (! is_scalar($externalRole) || ! is_scalar($userRole)) {
+                    continue;
+                }
+
+                $role = UserRole::tryFrom(strtolower(trim((string) $userRole)));
+                $externalRole = $this->normalizeRoleName((string) $externalRole);
+
+                if ($role instanceof UserRole && $externalRole !== '') {
+                    $mappings[$externalRole] = $role;
+                }
+            }
+        }
+
+        foreach ($this->defaultKeycloakRoleMappings() as $externalRole => $userRole) {
+            $mappings[$externalRole] ??= $userRole;
+        }
+
+        return $mappings;
+    }
+
+    /**
+     * @return array<string, UserRole>
+     */
+    private function defaultKeycloakRoleMappings(): array
+    {
+        return [
+            'producttracker-admin' => UserRole::Admin,
+            'producttracker-pd-manager' => UserRole::PdManager,
+            'producttracker-pd_manager' => UserRole::PdManager,
+            'producttracker-analyst' => UserRole::Analyst,
+            'producttracker-tech-lead' => UserRole::TechLead,
+            'producttracker-tech_lead' => UserRole::TechLead,
+            'producttracker-bizdev' => UserRole::BizDev,
+            'producttracker-committee' => UserRole::Committee,
+            'producttracker-initiator' => UserRole::Initiator,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function claimRoles(array $claims): array
+    {
+        $roles = [];
+
+        $this->appendRoleClaims($roles, $claims['roles'] ?? null);
+        $this->appendRoleClaims($roles, $claims['groups'] ?? null);
+
+        $realmAccess = $claims['realm_access'] ?? null;
+        if (is_array($realmAccess)) {
+            $this->appendRoleClaims($roles, $realmAccess['roles'] ?? null);
+        }
+
+        $resourceAccess = $claims['resource_access'] ?? null;
+        if (is_array($resourceAccess)) {
+            $clientId = (string) config('keycloak.client_id');
+            if ($clientId !== '' && isset($resourceAccess[$clientId]) && is_array($resourceAccess[$clientId])) {
+                $this->appendRoleClaims($roles, $resourceAccess[$clientId]['roles'] ?? null);
+            }
+        }
+
+        return array_values(array_unique(array_filter($roles)));
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     */
+    private function appendRoleClaims(array &$roles, mixed $value): void
+    {
+        if (! is_array($value)) {
+            return;
+        }
+
+        foreach ($value as $role) {
+            if (! is_scalar($role)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeRoleName((string) $role);
+            if ($normalized !== '') {
+                $roles[] = $normalized;
+            }
+        }
+    }
+
+    private function normalizeRoleName(string $role): string
+    {
+        $role = Str::of($role)->lower()->trim()->afterLast('/')->toString();
+
+        return $role;
     }
 
     private function isAllowedEmail(string $email): bool
@@ -228,6 +361,26 @@ class KeycloakAuthController extends Controller
         $value = $claims[$key] ?? '';
 
         return is_scalar($value) ? trim((string) $value) : '';
+    }
+
+    private function accessTokenClaims(string $accessToken): array
+    {
+        $parts = explode('.', $accessToken);
+        if (count($parts) < 2) {
+            return [];
+        }
+
+        $payload = strtr($parts[1], '-_', '+/');
+        $payload .= str_repeat('=', (4 - strlen($payload) % 4) % 4);
+
+        $json = base64_decode($payload, true);
+        if (! is_string($json)) {
+            return [];
+        }
+
+        $claims = json_decode($json, true);
+
+        return is_array($claims) ? $claims : [];
     }
 
     private function tokenPayload(string $code): array
