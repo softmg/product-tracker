@@ -68,6 +68,10 @@ prod-deploy:
 
 prod-update:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps backend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan optimize:clear
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan config:cache
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan route:cache
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan view:cache
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan migrate --force
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps frontend
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) ps

@@ -39,13 +39,32 @@ const mockAdminTeams: AdminTeam[] = mockTeams.map((team) => ({
   created_at: new Date(team.createdAt).toISOString(),
 }))
 
+const hasResponseStatus = (error: unknown, status: number): boolean => {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return false
+  }
+
+  const response = (error as { response?: { status?: number } }).response
+
+  return response?.status === status
+}
+
 export const fetchTeamsFx = createEffect(async (): Promise<AdminTeam[]> => {
   if (useTeamMocks) {
     await new Promise((resolve) => setTimeout(resolve, 100))
     return [...mockAdminTeams]
   }
 
-  const { data } = await apiClient.get<{ data: AdminTeam[] }>("/api/v1/teams")
+  try {
+    const { data } = await apiClient.get<{ data: AdminTeam[] }>("/api/v1/teams")
+    return data.data
+  } catch (error: unknown) {
+    if (!hasResponseStatus(error, 404)) {
+      throw error
+    }
+  }
+
+  const { data } = await apiClient.get<{ data: AdminTeam[] }>("/api/v1/admin/teams")
   return data.data
 })
 

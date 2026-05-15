@@ -60,6 +60,21 @@ describe("admin teams store", () => {
     expect(scope.getState($teams).length).toBeGreaterThan(0)
   })
 
+  it("fetchTeamsFx falls back to admin teams when public endpoint is missing", async () => {
+    mockGet
+      .mockRejectedValueOnce({ response: { status: 404 } })
+      .mockResolvedValueOnce({ data: { data: [mockTeam] } })
+
+    const { fetchTeamsFx, $teams } = await import("../teams")
+    const scope = fork()
+
+    await allSettled(fetchTeamsFx, { scope })
+
+    expect(mockGet).toHaveBeenNthCalledWith(1, "/api/v1/teams")
+    expect(mockGet).toHaveBeenNthCalledWith(2, "/api/v1/admin/teams")
+    expect(scope.getState($teams)).toHaveLength(1)
+  })
+
   it("createTeamFx appends a new team to $teams", async () => {
     mockGet.mockResolvedValueOnce({ data: { data: [mockTeam] } })
     const newTeam = { ...mockTeam, id: 2, name: "Growth" }
