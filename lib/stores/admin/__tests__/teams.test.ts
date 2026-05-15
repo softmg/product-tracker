@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest"
 import { allSettled, fork } from "effector"
 
 const mockTeam = {
@@ -9,6 +9,8 @@ const mockTeam = {
   hypotheses_count: 3,
   created_at: "2026-04-06T00:00:00Z",
 }
+
+const scopeTeamNames = (teams: Array<{ name: string }>): string[] => teams.map((team) => team.name)
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
@@ -25,6 +27,10 @@ describe("admin teams store", () => {
     vi.doMock("@/lib/api-client", () => ({
       apiClient: { get: mockGet, post: mockPost, put: mockPut, delete: mockDelete },
     }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   afterAll(() => {
@@ -58,6 +64,38 @@ describe("admin teams store", () => {
 
     expect(mockGet).not.toHaveBeenCalled()
     expect(scope.getState($teams).length).toBeGreaterThan(0)
+  })
+
+  it("mock team changes persist across fetches", async () => {
+    process.env.NEXT_PUBLIC_USE_MOCKS = "true"
+
+    const storage = new Map<string, string>()
+    const localStorage = {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage.set(key, value)
+      }),
+      removeItem: vi.fn((key: string) => {
+        storage.delete(key)
+      }),
+    }
+
+    vi.stubGlobal("window", { localStorage })
+
+    const { createTeamFx, fetchTeamsFx, $teams } = await import("../teams")
+    const createScope = fork()
+
+    await allSettled(createTeamFx, {
+      scope: createScope,
+      params: { name: "Local QA Team", description: null },
+    })
+
+    const fetchScope = fork()
+
+    await allSettled(fetchTeamsFx, { scope: fetchScope })
+
+    expect(localStorage.setItem).toHaveBeenCalled()
+    expect(scopeTeamNames(fetchScope.getState($teams))).toContain("Local QA Team")
   })
 
   it("fetchTeamsFx falls back to admin teams when public endpoint is missing", async () => {

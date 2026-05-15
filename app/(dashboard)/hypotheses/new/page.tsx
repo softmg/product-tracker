@@ -237,7 +237,7 @@ export default function NewHypothesisPage() {
                 <div className="space-y-2">
                   <Label htmlFor="priority">Приоритет *</Label>
                   <Select value={priority} onValueChange={(value) => setPriority(value as Priority)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="priority">
                       <SelectValue placeholder="Выберите приоритет" />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,7 +256,7 @@ export default function NewHypothesisPage() {
                       onValueChange={(value) => setSelectedTeamId(value === "none" ? "" : value)}
                       disabled={teamsLoading}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="team">
                         <SelectValue placeholder="Выберите команду" />
                       </SelectTrigger>
                       <SelectContent>
@@ -281,7 +281,7 @@ export default function NewHypothesisPage() {
                       value={ownerSelectValue}
                       onValueChange={(value) => setSelectedOwnerId(value === "none" ? "" : value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="owner">
                         <SelectValue placeholder="Выберите владельца" />
                       </SelectTrigger>
                       <SelectContent>
