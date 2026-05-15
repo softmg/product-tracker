@@ -73,7 +73,7 @@ prod-update:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan route:cache
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan view:cache
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) exec backend php artisan migrate --force
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --build --no-deps frontend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) up -d --force-recreate --no-deps frontend
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file $(ENV_FILE) ps
 
 prod-cert-init-selfsigned:
