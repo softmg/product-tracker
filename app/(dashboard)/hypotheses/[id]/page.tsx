@@ -109,7 +109,11 @@ function mapApiDetailToHypothesis(source: ApiHypothesisDetail): Hypothesis {
     id: String(source.id),
     code: source.code,
     title: source.title,
-    description: source.description ?? source.problem ?? source.solution ?? "",
+    description: source.description ?? "",
+    problem: source.problem ?? undefined,
+    solution: source.solution ?? undefined,
+    assumptions: source.assumptions ?? undefined,
+    targetAudience: source.target_audience ?? undefined,
     status: isHypothesisStatus(source.status) ? source.status : "backlog",
     teamId: source.team ? String(source.team.id) : source.team_id ? String(source.team_id) : "",
     ownerId: source.owner ? String(source.owner.id) : source.owner_id ? String(source.owner_id) : "",
@@ -228,6 +232,12 @@ export default function HypothesisPage({ params }: PageProps) {
   const teamName = apiHypothesis?.team?.name || "-"
   const ownerName =
     apiHypothesis?.owner?.name || apiHypothesis?.owner?.email || (hypothesis?.ownerId ? `Пользователь #${hypothesis.ownerId}` : "-")
+  const overviewFields = [
+    { label: "Проблема / боль клиента", value: hypothesis?.problem },
+    { label: "Формулировка «Мы верим, что...»", value: hypothesis?.solution },
+    { label: "Ключевые предположения", value: hypothesis?.assumptions },
+    { label: "Целевая аудитория", value: hypothesis?.targetAudience },
+  ]
 
   const getDaysRemaining = () => {
     if (!hypothesis?.deadline) return null
@@ -421,10 +431,30 @@ export default function HypothesisPage({ params }: PageProps) {
               <div className="grid gap-6 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
                   <CardHeader>
-                    <CardTitle>Описание</CardTitle>
+                    <CardTitle>Исходные данные</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-relaxed">{hypothesis.description || "Описание не заполнено"}</p>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {overviewFields.map((field) => (
+                        <div key={field.label} className="rounded-md border bg-muted/20 px-4 py-3">
+                          <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                            {field.label}
+                          </p>
+                          <p className="mt-2 text-sm leading-relaxed">
+                            {field.value || "Не заполнено"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {hypothesis.description && (
+                      <div className="rounded-md border bg-muted/20 px-4 py-3">
+                        <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Описание гипотезы
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed">{hypothesis.description}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

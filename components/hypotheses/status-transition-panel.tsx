@@ -89,6 +89,10 @@ export function StatusTransitionPanel({
   const getConditionsForTransition = (): TransitionCondition[] => {
     switch (currentStatus) {
       case 'backlog': // Идея -> Первичный скоринг
+        const problem = hypothesis.problem || hypothesis.description
+        const solution = hypothesis.solution
+        const targetAudience = hypothesis.targetAudience || hypothesis.deepDive?.targetAudience
+
         return [
           { 
             id: 'title', 
@@ -98,22 +102,22 @@ export function StatusTransitionPanel({
           { 
             id: 'description', 
             label: 'Проблема / боль клиента', 
-            isMet: !!hypothesis.description && hypothesis.description.length > 10 
+            isMet: !!problem && problem.length > 10
           },
           { 
             id: 'belief', 
             label: 'Формулировка «Мы верим, что…»', 
-            isMet: hypothesis.description?.toLowerCase().includes('верим') || hypothesis.description?.toLowerCase().includes('believe') || true // mock
+            isMet: !!solution && solution.length > 10
           },
           { 
             id: 'assumptions', 
             label: 'Ключевые предположения', 
-            isMet: true // would check specific field
+            isMet: !!hypothesis.assumptions && hypothesis.assumptions.length > 10
           },
           { 
             id: 'audience', 
             label: 'Целевая аудитория', 
-            isMet: !!hypothesis.deepDive?.targetAudience || true // mock
+            isMet: !!targetAudience && targetAudience.length > 3
           },
           { 
             id: 'owner', 

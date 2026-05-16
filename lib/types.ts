@@ -38,6 +38,10 @@ export interface Hypothesis {
   code: string // e.g., "HYP-001"
   title: string
   description: string
+  problem?: string
+  solution?: string
+  assumptions?: string
+  targetAudience?: string
   status: HypothesisStatus
   teamId: string
   ownerId: string
