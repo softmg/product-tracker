@@ -8,6 +8,7 @@ export interface User {
   name: string
   avatar?: string
   role: UserRole
+  roles: UserRole[]
   teamId: string
   isActive: boolean
   createdAt: string

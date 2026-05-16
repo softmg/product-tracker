@@ -7,6 +7,7 @@ export interface AdminUser {
   name: string
   email: string
   role: UserRole
+  roles: UserRole[]
   team_id: number | null
   team: { id: number; name: string } | null
   is_active: boolean
@@ -21,7 +22,8 @@ export interface CreateUserParams {
   name: string
   email: string
   password: string
-  role: UserRole
+  role?: UserRole
+  roles: UserRole[]
   team_id?: number
 }
 
@@ -30,6 +32,7 @@ export interface UpdateUserParams {
   name?: string
   email?: string
   role?: UserRole
+  roles?: UserRole[]
   team_id?: number | null
 }
 

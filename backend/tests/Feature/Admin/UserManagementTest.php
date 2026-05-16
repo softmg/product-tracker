@@ -71,6 +71,55 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_create_user_with_multiple_roles(): void
+    {
+        $admin = User::factory()->create([
+            'role' => UserRole::Admin,
+        ]);
+
+        $response = $this
+            ->actingAs($admin, 'web')
+            ->postJson('/api/v1/admin/users', [
+                'name' => 'Multi Role User',
+                'email' => 'multi@company.com',
+                'password' => 'password123',
+                'roles' => [
+                    UserRole::Analyst->value,
+                    UserRole::BizDev->value,
+                ],
+            ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.role', UserRole::Analyst->value)
+            ->assertJsonPath('data.roles', [
+                UserRole::Analyst->value,
+                UserRole::BizDev->value,
+            ]);
+
+        $user = User::query()->where('email', 'multi@company.com')->firstOrFail();
+
+        $this->assertSame(UserRole::Analyst, $user->role);
+        $this->assertSame([UserRole::Analyst->value, UserRole::BizDev->value], $user->roles);
+    }
+
+    public function test_admin_role_can_be_secondary_role(): void
+    {
+        $admin = User::factory()->create([
+            'role' => UserRole::Initiator,
+            'roles' => [
+                UserRole::Initiator->value,
+                UserRole::Admin->value,
+            ],
+        ]);
+
+        $response = $this
+            ->actingAs($admin, 'web')
+            ->getJson('/api/v1/admin/users');
+
+        $response->assertOk();
+    }
+
     public function test_admin_can_toggle_user_active(): void
     {
         $admin = User::factory()->create([

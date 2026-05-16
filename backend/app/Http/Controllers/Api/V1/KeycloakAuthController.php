@@ -174,11 +174,12 @@ class KeycloakAuthController extends Controller
             'last_login_at' => now(),
         ];
 
-        $ssoRole = $this->ssoRole($email, $claims);
+        $ssoRoles = $this->ssoRoles($email, $claims);
 
         if ($user instanceof User) {
-            if ($ssoRole instanceof UserRole) {
-                $attributes['role'] = $ssoRole;
+            if ($ssoRoles !== []) {
+                $attributes['roles'] = array_map(static fn (UserRole $role): string => $role->value, $ssoRoles);
+                $attributes['role'] = $attributes['roles'][0];
             }
 
             $user->fill($attributes);
@@ -194,19 +195,27 @@ class KeycloakAuthController extends Controller
         return User::query()->create([
             ...$attributes,
             'password' => Hash::make(Str::random(64)),
-            'role' => $ssoRole ?? $this->defaultProvisionedRole(),
+            'role' => $this->primaryRole($ssoRoles)->value,
+            'roles' => array_map(
+                static fn (UserRole $role): string => $role->value,
+                $ssoRoles !== [] ? $ssoRoles : [$this->defaultProvisionedRole()],
+            ),
             'is_active' => true,
         ]);
     }
 
-    private function ssoRole(string $email, array $claims): ?UserRole
+    /**
+     * @return array<int, UserRole>
+     */
+    private function ssoRoles(string $email, array $claims): array
     {
+        $roles = [];
         $adminEmails = config('keycloak.admin_emails', []);
         if (is_array($adminEmails) && in_array(strtolower($email), $adminEmails, true)) {
-            return UserRole::Admin;
+            $roles[] = UserRole::Admin;
         }
 
-        return $this->mappedKeycloakRole($claims);
+        return $this->uniqueRoles([...$roles, ...$this->mappedKeycloakRoles($claims)]);
     }
 
     private function defaultProvisionedRole(): UserRole
@@ -214,20 +223,45 @@ class KeycloakAuthController extends Controller
         return UserRole::tryFrom((string) config('keycloak.default_role')) ?? UserRole::Initiator;
     }
 
-    private function mappedKeycloakRole(array $claims): ?UserRole
+    private function primaryRole(array $roles): UserRole
+    {
+        return $roles[0] ?? $this->defaultProvisionedRole();
+    }
+
+    /**
+     * @return array<int, UserRole>
+     */
+    private function mappedKeycloakRoles(array $claims): array
     {
         $claimRoles = $this->claimRoles($claims);
         if ($claimRoles === []) {
-            return null;
+            return [];
         }
+
+        $roles = [];
 
         foreach ($this->keycloakRoleMappings() as $keycloakRole => $userRole) {
             if (in_array($keycloakRole, $claimRoles, true)) {
-                return $userRole;
+                $roles[] = $userRole;
             }
         }
 
-        return null;
+        return $this->uniqueRoles($roles);
+    }
+
+    /**
+     * @param  array<int, UserRole>  $roles
+     * @return array<int, UserRole>
+     */
+    private function uniqueRoles(array $roles): array
+    {
+        $unique = [];
+
+        foreach ($roles as $role) {
+            $unique[$role->value] = $role;
+        }
+
+        return array_values($unique);
     }
 
     /**

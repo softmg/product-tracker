@@ -69,6 +69,7 @@ const mapAuthUserToUser = (authUser: AuthUser): User => ({
   email: authUser.email,
   name: authUser.name,
   role: authUser.role,
+  roles: authUser.roles?.length > 0 ? authUser.roles : [authUser.role],
   teamId: authUser.team_id ? `team-${authUser.team_id}` : "team-1",
   isActive: authUser.is_active,
   createdAt: authUser.created_at,
@@ -152,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false
       }
 
-      return rolePermissions[user.role].includes(permission)
+      return user.roles.some((role) => rolePermissions[role].includes(permission))
     },
     [user]
   )

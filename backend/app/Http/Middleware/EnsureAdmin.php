@@ -18,7 +18,7 @@ class EnsureAdmin
     {
         $user = $request->user();
 
-        if (! $user || $user->role !== UserRole::Admin) {
+        if (! $user || ! $user->hasRole(UserRole::Admin)) {
             abort(403);
         }
 

@@ -34,6 +34,7 @@ const mapMockUserToAuthUser = (user: (typeof mockUsers)[number]): AuthUser => ({
   email: user.email,
   name: user.name,
   role: user.role,
+  roles: user.roles,
   team_id: parseMockId(user.teamId, "team-"),
   team: null,
   is_active: user.isActive,
@@ -105,7 +106,7 @@ export const $user = createStore<AuthUser | null>(null)
   .on(fetchMeFx.doneData, (_, user) => user)
   .on(restoreMockSessionFx.doneData, (_, user) => user)
   .on(logoutFx.done, () => null)
-  .on(setUserRole, (user, role) => (user ? { ...user, role } : user))
+  .on(setUserRole, (user, role) => (user ? { ...user, role, roles: [role] } : user))
   .reset(resetAuth)
 
 if (isAuthMockMode) {

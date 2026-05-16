@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -41,7 +42,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { roleLabels } from "@/lib/mock-data"
-import { $users, $usersLoading, createUserFx, fetchUsersFx, toggleUserActiveFx } from "@/lib/stores/admin/users"
+import { $users, $usersLoading, createUserFx, fetchUsersFx, toggleUserActiveFx, updateUserFx, type AdminUser } from "@/lib/stores/admin/users"
 import { $teams, fetchTeamsFx } from "@/lib/stores/admin/teams"
 import type { UserRole } from "@/lib/types"
 
@@ -61,21 +62,26 @@ const getApiErrorMessage = (error: unknown): string => {
 export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isRolesDialogOpen, setIsRolesDialogOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [formName, setFormName] = useState("")
   const [formEmail, setFormEmail] = useState("")
   const [formPassword, setFormPassword] = useState("")
-  const [formRole, setFormRole] = useState<UserRole>("initiator")
+  const [formRoles, setFormRoles] = useState<UserRole[]>(["initiator"])
+  const [editRoles, setEditRoles] = useState<UserRole[]>(["initiator"])
   const [formTeamId, setFormTeamId] = useState("none")
   const [pageError, setPageError] = useState("")
   const [formError, setFormError] = useState("")
-  const [users, usersLoading, teams, createPending, doFetchUsers, doFetchTeams, doCreateUser, doToggleUserActive] = useUnit([
+  const [users, usersLoading, teams, createPending, updatePending, doFetchUsers, doFetchTeams, doCreateUser, doUpdateUser, doToggleUserActive] = useUnit([
     $users,
     $usersLoading,
     $teams,
     createUserFx.pending,
+    updateUserFx.pending,
     fetchUsersFx,
     fetchTeamsFx,
     createUserFx,
+    updateUserFx,
     toggleUserActiveFx,
   ])
 
@@ -88,9 +94,28 @@ export default function AdminUsersPage() {
     setFormName("")
     setFormEmail("")
     setFormPassword("")
-    setFormRole("initiator")
+    setFormRoles(["initiator"])
     setFormTeamId("none")
     setFormError("")
+  }
+
+  const userRoles = (user: AdminUser): UserRole[] => {
+    return user.roles?.length > 0 ? user.roles : [user.role]
+  }
+
+  const toggleRole = (roles: UserRole[], role: UserRole): UserRole[] => {
+    if (roles.includes(role)) {
+      return roles.length === 1 ? roles : roles.filter((item) => item !== role)
+    }
+
+    return [...roles, role]
+  }
+
+  const handleOpenRolesDialog = (user: AdminUser) => {
+    setEditingUser(user)
+    setEditRoles(userRoles(user))
+    setFormError("")
+    setIsRolesDialogOpen(true)
   }
 
   const filteredUsers = users.filter(user => {
@@ -148,6 +173,14 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleRolesDialogOpenChange = (open: boolean) => {
+    setIsRolesDialogOpen(open)
+    if (!open) {
+      setEditingUser(null)
+      setFormError("")
+    }
+  }
+
   const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setFormError("")
@@ -157,12 +190,33 @@ export default function AdminUsersPage() {
         name: formName.trim(),
         email: formEmail.trim(),
         password: formPassword,
-        role: formRole,
+        roles: formRoles,
         team_id: formTeamId === "none" ? undefined : Number(formTeamId),
       })
 
       setIsDialogOpen(false)
       resetForm()
+    } catch (error: unknown) {
+      setFormError(getApiErrorMessage(error))
+    }
+  }
+
+  const handleUpdateRoles = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setFormError("")
+
+    if (!editingUser) {
+      return
+    }
+
+    try {
+      await doUpdateUser({
+        id: editingUser.id,
+        roles: editRoles,
+      })
+
+      setIsRolesDialogOpen(false)
+      setEditingUser(null)
     } catch (error: unknown) {
       setFormError(getApiErrorMessage(error))
     }
@@ -249,19 +303,18 @@ export default function AdminUsersPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roleOptions.map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label>Roles</Label>
+                      <div className="grid gap-2">
+                        {roleOptions.map(([value, label]) => (
+                          <Label key={value} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                            <Checkbox
+                              checked={formRoles.includes(value)}
+                              onCheckedChange={() => setFormRoles((roles) => toggleRole(roles, value))}
+                            />
+                            {label}
+                          </Label>
+                        ))}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="team">Team</Label>
@@ -287,6 +340,46 @@ export default function AdminUsersPage() {
                     <Button type="submit" disabled={createPending}>
                       {createPending ? <Spinner className="mr-2 h-4 w-4" /> : null}
                       Create User
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isRolesDialogOpen} onOpenChange={handleRolesDialogOpenChange}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Roles</DialogTitle>
+                  <DialogDescription>
+                    Assign roles for {editingUser?.name}
+                  </DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={handleUpdateRoles}>
+                  {formError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{formError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {roleOptions.map(([value, label]) => (
+                      <Label key={value} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                        <Checkbox
+                          checked={editRoles.includes(value)}
+                          onCheckedChange={() => setEditRoles((roles) => toggleRole(roles, value))}
+                        />
+                        {label}
+                      </Label>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsRolesDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updatePending}>
+                      {updatePending ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                      Save Roles
                     </Button>
                   </div>
                 </form>
@@ -318,7 +411,7 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Roles</TableHead>
                   <TableHead>Team</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Login</TableHead>
@@ -356,9 +449,13 @@ export default function AdminUsersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getRoleBadgeColor(user.role)}>
-                          {roleLabels[user.role]}
-                        </Badge>
+                        <div className="flex max-w-xs flex-wrap gap-1">
+                          {userRoles(user).map((role) => (
+                            <Badge key={role} className={getRoleBadgeColor(role)}>
+                              {roleLabels[role]}
+                            </Badge>
+                          ))}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {user.team?.name || "-"}
@@ -387,6 +484,9 @@ export default function AdminUsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenRolesDialog(user)}>
+                              Roles
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => void handleToggleActive(user.id)}>
                               {user.is_active ? (
                                 <>

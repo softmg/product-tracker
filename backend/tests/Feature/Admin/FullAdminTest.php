@@ -30,7 +30,7 @@ class FullAdminTest extends TestCase
             ->getJson('/api/v1/admin/users');
 
         $response->assertOk()
-            ->assertJsonStructure(['data' => [['id', 'name', 'email', 'role', 'is_active']]]);
+            ->assertJsonStructure(['data' => [['id', 'name', 'email', 'role', 'roles', 'is_active']]]);
     }
 
     public function test_admin_can_create_user(): void
@@ -48,7 +48,8 @@ class FullAdminTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.email', 'new@company.com')
-            ->assertJsonPath('data.role', UserRole::Analyst->value);
+            ->assertJsonPath('data.role', UserRole::Analyst->value)
+            ->assertJsonPath('data.roles', [UserRole::Analyst->value]);
     }
 
     public function test_admin_can_update_user(): void

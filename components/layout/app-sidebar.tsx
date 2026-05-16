@@ -242,7 +242,7 @@ export function AppSidebar() {
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user?.name || "Гость"}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {user ? roleLabels[user.role] : "Не авторизован"}
+                      {user ? user.roles.map((role) => roleLabels[role]).join(", ") : "Не авторизован"}
                     </span>
                   </div>
                   <ChevronDown className="ml-auto h-4 w-4" />

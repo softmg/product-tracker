@@ -10,6 +10,7 @@ export interface AuthUser {
   email: string
   name: string
   role: UserRole
+  roles: UserRole[]
   team_id: number | null
   team: AuthTeam | null
   is_active: boolean

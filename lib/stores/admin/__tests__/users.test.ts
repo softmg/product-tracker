@@ -7,6 +7,7 @@ const mockUser = {
   name: "Alice",
   email: "alice@company.com",
   role: "initiator" as const,
+  roles: ["initiator" as const],
   team_id: null,
   team: null,
   is_active: true,
@@ -51,7 +52,7 @@ describe("admin users store", () => {
     await allSettled(fetchUsersFx, { scope })
     await allSettled(createUserFx, {
       scope,
-      params: { name: "Bob", email: "bob@company.com", password: TEST_NEW_USER_PASSWORD, role: "initiator" },
+      params: { name: "Bob", email: "bob@company.com", password: TEST_NEW_USER_PASSWORD, roles: ["initiator"] },
     })
 
     expect(scope.getState($users)).toHaveLength(2)

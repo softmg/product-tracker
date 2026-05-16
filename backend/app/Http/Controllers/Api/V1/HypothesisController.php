@@ -21,9 +21,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class HypothesisController extends Controller
 {
-    public function __construct(private readonly HypothesisCodeGenerator $hypothesisCodeGenerator)
-    {
-    }
+    public function __construct(private readonly HypothesisCodeGenerator $hypothesisCodeGenerator) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -127,7 +125,7 @@ class HypothesisController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->role !== UserRole::Admin) {
+        if (! $user->hasRole(UserRole::Admin)) {
             abort(403);
         }
 

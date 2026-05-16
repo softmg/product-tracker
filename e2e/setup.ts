@@ -19,6 +19,7 @@ export async function mockSessionAs(page: Page, role: UserRole): Promise<void> {
     email: `${role}@company.test`,
     name: `Test ${role}`,
     role,
+    roles: [role],
     team_id: 2,
     team: null,
     is_active: true,

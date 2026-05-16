@@ -68,6 +68,7 @@ class UserSeeder extends Seeder
                     'name' => $user['name'],
                     'password' => Hash::make('password'),
                     'role' => $user['role'],
+                    'roles' => [$user['role']->value],
                     'team_id' => $user['team_id'],
                     'email_verified_at' => now(),
                     'is_active' => true,

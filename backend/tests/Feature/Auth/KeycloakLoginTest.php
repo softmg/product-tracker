@@ -56,6 +56,7 @@ class KeycloakLoginTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::Admin, $user->role);
+        $this->assertSame([UserRole::Admin->value], $user->roles);
         $this->assertSame('keycloak', $user->sso_provider);
         $this->assertSame('keycloak-user-1', $user->sso_subject);
         $this->assertNotNull($user->last_login_at);
@@ -90,6 +91,47 @@ class KeycloakLoginTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::BizDev, $user->role);
+        $this->assertSame([UserRole::BizDev->value], $user->roles);
+    }
+
+    public function test_keycloak_callback_provisions_multiple_roles_from_role_mappings(): void
+    {
+        $this->configureKeycloak();
+
+        Http::fake([
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/token' => Http::response([
+                'access_token' => $this->fakeJwt([
+                    'realm_access' => [
+                        'roles' => ['producttracker-analyst', 'producttracker-bizdev'],
+                    ],
+                    'resource_access' => [
+                        'product-tracker' => [
+                            'roles' => ['producttracker-tech_lead'],
+                        ],
+                    ],
+                ]),
+            ]),
+            'https://keycloak.test/realms/product-tracker/protocol/openid-connect/userinfo' => Http::response([
+                'sub' => 'keycloak-user-4',
+                'email' => 'multi-role@example.org',
+                'email_verified' => true,
+                'name' => 'SSO Multi Role',
+            ]),
+        ]);
+
+        $this
+            ->withSession(['keycloak_oauth_state' => 'expected-state'])
+            ->get('/api/v1/auth/keycloak/callback?code=auth-code&state=expected-state')
+            ->assertRedirect('https://producttracker.test/dashboard');
+
+        $user = User::query()->where('email', 'multi-role@example.org')->firstOrFail();
+
+        $this->assertSame(UserRole::Analyst, $user->role);
+        $this->assertSame([
+            UserRole::Analyst->value,
+            UserRole::TechLead->value,
+            UserRole::BizDev->value,
+        ], $user->roles);
     }
 
     public function test_keycloak_callback_syncs_existing_user_role_from_role_mapping(): void
@@ -125,6 +167,7 @@ class KeycloakLoginTest extends TestCase
 
         $this->assertAuthenticatedAs($user->refresh());
         $this->assertSame(UserRole::BizDev, $user->role);
+        $this->assertSame([UserRole::BizDev->value], $user->roles);
         $this->assertSame('keycloak', $user->sso_provider);
         $this->assertSame('keycloak-user-3', $user->sso_subject);
     }

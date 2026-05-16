@@ -50,7 +50,7 @@ class StatusMachineService
         }
 
         if (! $this->isRoleAllowed($transition, $user)) {
-            throw new DomainException("User role {$user->role->value} is not allowed for this transition.");
+            throw new DomainException('User roles '.implode(', ', $user->roleValues()).' are not allowed for this transition.');
         }
 
         if (! $this->isConditionMet($transition, $hypothesis)) {
@@ -82,8 +82,8 @@ class StatusMachineService
     {
         $allowedRoles = $transition->allowed_roles ?? [];
 
-        return in_array($user->role->value, $allowedRoles, true)
-            || $user->role === UserRole::Admin;
+        return $user->hasRole(UserRole::Admin)
+            || array_intersect($user->roleValues(), $allowedRoles) !== [];
     }
 
     private function isConditionMet(StatusTransition $transition, Hypothesis $hypothesis): bool

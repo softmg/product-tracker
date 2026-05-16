@@ -16,6 +16,20 @@ class UpdateUserRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $roles = $this->input('roles');
+        $role = $this->input('role');
+
+        if ($roles === null && is_string($role) && $role !== '') {
+            $this->merge(['roles' => [$role]]);
+        }
+
+        if (($role === null || $role === '') && is_array($roles) && isset($roles[0])) {
+            $this->merge(['role' => $roles[0]]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -31,6 +45,8 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($this->route('user')),
             ],
             'role' => ['sometimes', 'required', new Enum(UserRole::class)],
+            'roles' => ['sometimes', 'required', 'array', 'min:1'],
+            'roles.*' => ['required', new Enum(UserRole::class)],
             'team_id' => ['sometimes', 'nullable', 'integer', 'exists:teams,id'],
             'is_active' => ['sometimes', 'boolean'],
             'password' => ['sometimes', 'nullable', 'string', 'min:8'],

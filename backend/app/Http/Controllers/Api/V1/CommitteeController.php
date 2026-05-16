@@ -21,9 +21,7 @@ use Illuminate\Http\Request;
 
 class CommitteeController extends Controller
 {
-    public function __construct(private readonly CommitteeDecisionService $committeeDecisionService)
-    {
-    }
+    public function __construct(private readonly CommitteeDecisionService $committeeDecisionService) {}
 
     public function index(Hypothesis $hypothesis): JsonResponse
     {
@@ -97,7 +95,7 @@ class CommitteeController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if (! in_array($user->role, [UserRole::Admin, UserRole::PdManager], true)) {
+        if (! $user->hasAnyRole([UserRole::Admin, UserRole::PdManager])) {
             abort(403);
         }
 

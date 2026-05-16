@@ -16,7 +16,7 @@ class ListAuditLogRequest extends FormRequest
         /** @var User|null $user */
         $user = $this->user();
 
-        return $user?->role === UserRole::Admin;
+        return $user?->hasRole(UserRole::Admin) ?? false;
     }
 
     /**

@@ -21,7 +21,7 @@ class UserController extends Controller
 
         $role = $request->query('role');
         if (is_string($role) && $role !== '') {
-            $query->where('role', $role);
+            $query->withRole($role);
         }
 
         $teamId = $request->query('team_id');
@@ -55,6 +55,8 @@ class UserController extends Controller
     {
         $data = $request->validated();
         $data['is_active'] = $data['is_active'] ?? true;
+        $data['roles'] = User::normalizeRoleValues($data['roles']);
+        $data['role'] = $data['roles'][0];
 
         $user = User::query()->create($data);
 
@@ -74,6 +76,11 @@ class UserController extends Controller
 
         if (array_key_exists('password', $data) && $data['password'] === null) {
             unset($data['password']);
+        }
+
+        if (array_key_exists('roles', $data)) {
+            $data['roles'] = User::normalizeRoleValues($data['roles']);
+            $data['role'] = $data['roles'][0];
         }
 
         $user->update($data);

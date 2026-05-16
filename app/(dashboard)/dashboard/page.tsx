@@ -131,7 +131,7 @@ function toDashboardHypothesis(item: ApiHypothesisList): DashboardHypothesis {
   }
 }
 
-function getActionHint(hypothesis: DashboardHypothesis, userRole: UserRole): string | null {
+function getActionHint(hypothesis: DashboardHypothesis, userRoles: UserRole[]): string | null {
   switch (hypothesis.status) {
     case "backlog":
       return "Отправь в скоринг"
@@ -145,7 +145,7 @@ function getActionHint(hypothesis: DashboardHypothesis, userRole: UserRole): str
     case "experiment":
       return "Внеси результаты и подготовь к питчу"
     case "go_no_go":
-      return userRole === "admin" ? "Ожидает голосования" : "На голосовании ПК"
+      return userRoles.includes("admin") ? "Ожидает голосования" : "На голосовании ПК"
     default:
       return null
   }
@@ -236,7 +236,7 @@ export default function DashboardPage() {
       .filter((h) => h.status !== "done")
       .map((h) => ({
         hypothesis: h,
-        action: getActionHint(h, user.role),
+        action: getActionHint(h, user.roles),
       }))
       .filter((item) => item.action !== null)
       .slice(0, expandedSections.actions ? 20 : 5)
@@ -249,7 +249,7 @@ export default function DashboardPage() {
       .filter((h) => h.status !== "done")
       .map((h) => ({
         hypothesis: h,
-        action: getActionHint(h, user.role),
+        action: getActionHint(h, user.roles),
       }))
       .filter((item) => item.action !== null).length
   }, [user, userHypotheses])
@@ -426,7 +426,7 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Привет, {user.name.split(" ")[0]}!</h1>
               <p className="text-muted-foreground">
-                {roleLabelsRu[user.role]} &middot; {currentDate}
+                {user.roles.map((role) => roleLabelsRu[role]).join(", ")} &middot; {currentDate}
               </p>
             </div>
             <div className="flex items-center gap-3">

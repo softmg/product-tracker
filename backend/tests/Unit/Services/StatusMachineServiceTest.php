@@ -41,7 +41,33 @@ class StatusMachineServiceTest extends TestCase
             'status' => HypothesisStatus::Backlog,
         ]);
 
-        $result = (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user);
+        $result = (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
+
+        $this->assertEquals(HypothesisStatus::Scoring, $result->status);
+    }
+
+    public function test_can_transition_when_allowed_role_is_secondary(): void
+    {
+        StatusTransition::factory()->create([
+            'from_status' => HypothesisStatus::Backlog->value,
+            'to_status' => HypothesisStatus::Scoring->value,
+            'allowed_roles' => [UserRole::PdManager->value],
+            'condition_type' => 'none',
+        ]);
+
+        $user = User::factory()->create([
+            'role' => UserRole::Initiator,
+            'roles' => [
+                UserRole::Initiator->value,
+                UserRole::PdManager->value,
+            ],
+        ]);
+
+        $hypothesis = Hypothesis::factory()->create([
+            'status' => HypothesisStatus::Backlog,
+        ]);
+
+        $result = (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
 
         $this->assertEquals(HypothesisStatus::Scoring, $result->status);
     }
@@ -65,7 +91,7 @@ class StatusMachineServiceTest extends TestCase
 
         $this->expectException(DomainException::class);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user);
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
     }
 
     public function test_transition_denied_when_scoring_threshold_not_met(): void
@@ -93,7 +119,7 @@ class StatusMachineServiceTest extends TestCase
 
         $this->expectException(DomainException::class);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::DeepDive, $user);
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::DeepDive, $user);
     }
 
     public function test_transition_denied_when_required_fields_missing(): void
@@ -117,7 +143,7 @@ class StatusMachineServiceTest extends TestCase
 
         $this->expectException(DomainException::class);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user);
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
     }
 
     public function test_transition_denied_when_required_checklist_not_completed(): void
@@ -149,7 +175,7 @@ class StatusMachineServiceTest extends TestCase
 
         $this->expectException(DomainException::class);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Experiment, $user);
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Experiment, $user);
     }
 
     public function test_status_history_recorded_on_transition(): void
@@ -169,7 +195,7 @@ class StatusMachineServiceTest extends TestCase
             'status' => HypothesisStatus::Backlog,
         ]);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user, 'Moving to scoring');
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user, 'Moving to scoring');
 
         $this->assertDatabaseHas('hypothesis_status_history', [
             'hypothesis_id' => $hypothesis->id,
@@ -203,7 +229,7 @@ class StatusMachineServiceTest extends TestCase
             'status' => HypothesisStatus::Backlog,
         ]);
 
-        $result = (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user);
+        $result = (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
 
         $this->assertNotNull($result->sla_deadline);
         $this->assertSame('ok', $result->sla_status);
@@ -228,7 +254,7 @@ class StatusMachineServiceTest extends TestCase
             'status' => HypothesisStatus::Backlog,
         ]);
 
-        (new StatusMachineService())->transition($hypothesis, HypothesisStatus::Scoring, $user);
+        (new StatusMachineService)->transition($hypothesis, HypothesisStatus::Scoring, $user);
 
         Event::assertDispatched(HypothesisStatusChanged::class);
     }

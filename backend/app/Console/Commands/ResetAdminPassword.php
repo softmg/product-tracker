@@ -21,7 +21,7 @@ class ResetAdminPassword extends Command
         /** @var string|null $email */
         $email = $this->option('email');
 
-        $query = User::query()->where('role', UserRole::Admin->value);
+        $query = User::query()->withRole(UserRole::Admin);
 
         if ($email !== null && $email !== '') {
             $admin = $query->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();

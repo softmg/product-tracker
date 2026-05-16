@@ -16,7 +16,7 @@ use BackedEnum;
 class NotificationDispatcher
 {
     /**
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     public function dispatch(string $eventType, Hypothesis $hypothesis, array $context = []): void
     {
@@ -56,7 +56,7 @@ class NotificationDispatcher
     }
 
     /**
-     * @param array<int, mixed> $recipients
+     * @param  array<int, mixed>  $recipients
      * @return array<int, int>
      */
     private function resolveRecipientIds(array $recipients, Hypothesis $hypothesis): array
@@ -106,7 +106,7 @@ class NotificationDispatcher
 
             if ($recipient === 'admin') {
                 $adminIds = User::query()
-                    ->where('role', UserRole::Admin->value)
+                    ->withRole(UserRole::Admin)
                     ->where('is_active', true)
                     ->pluck('id')
                     ->map(static fn ($id): int => (int) $id)
@@ -119,7 +119,7 @@ class NotificationDispatcher
 
             if ($this->isUserRoleValue($recipient)) {
                 $roleIds = User::query()
-                    ->where('role', $recipient)
+                    ->withRole($recipient)
                     ->where('is_active', true)
                     ->pluck('id')
                     ->map(static fn ($id): int => (int) $id)
@@ -158,7 +158,7 @@ class NotificationDispatcher
     }
 
     /**
-     * @param array<string, mixed> $context
+     * @param  array<string, mixed>  $context
      */
     private function renderMessage(?string $template, string $eventType, Hypothesis $hypothesis, array $context): string
     {

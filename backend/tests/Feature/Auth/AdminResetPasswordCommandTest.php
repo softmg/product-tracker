@@ -32,6 +32,28 @@ class AdminResetPasswordCommandTest extends TestCase
         $this->assertTrue(Hash::check('new-password-123', $admin->password));
     }
 
+    public function test_command_resets_password_for_secondary_admin_role(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'secondary-admin@company.com',
+            'role' => UserRole::Initiator,
+            'roles' => [
+                UserRole::Initiator->value,
+                UserRole::Admin->value,
+            ],
+            'password' => 'old-password',
+        ]);
+
+        $this->artisan('admin:reset-password', [
+            'password' => 'new-password-123',
+            '--email' => 'secondary-admin@company.com',
+        ])->assertSuccessful();
+
+        $admin->refresh();
+
+        $this->assertTrue(Hash::check('new-password-123', $admin->password));
+    }
+
     public function test_command_resets_first_admin_password_when_email_not_provided(): void
     {
         $firstAdmin = User::factory()->create([
