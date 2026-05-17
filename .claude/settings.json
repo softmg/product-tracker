@@ -182,6 +182,14 @@
     "CLAUDE_FLOW_V3_ENABLED": "true",
     "CLAUDE_FLOW_HOOKS_ENABLED": "true"
   },
+  "extraKnownMarketplaces": {
+    "izmailovilya": {
+      "source": {
+        "source": "github",
+        "repo": "izmailovilya/cc_ajtbd"
+      }
+    }
+  },
   "claudeFlow": {
     "version": "3.0.0",
     "enabled": true,
@@ -285,5 +293,8 @@
       "cveCheck": true,
       "threatModel": true
     }
+  },
+  "enabledPlugins": {
+    "ajtbd@izmailovilya": true
   }
 }

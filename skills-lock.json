@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/product-discovery/SKILL.md",
       "computedHash": "3a8ee51fedb701116a9a244f0df8974023823df86b92054010915d1325a4a046"
+    },
+    "ajtbd-methodology": {
+      "source": "izmailovilya/cc_ajtbd",
+      "sourceType": "github",
+      "skillPath": "ajtbd/skills/ajtbd-methodology/SKILL.md",
+      "computedHash": "6e99e7a759b4c68a29b0b5260d442a6536730f8e77e23ce07528e230e0567884"
     }
   }
 }
