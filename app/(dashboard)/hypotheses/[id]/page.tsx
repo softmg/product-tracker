@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Pencil, Trash2, MoreHorizontal, Clock, Send, MessageSquare } from "lucide-react"
 import { useUnit } from "effector-react"
+import { toast } from "sonner"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -104,6 +105,51 @@ function isHypothesisStatus(value: string): value is HypothesisStatus {
   return allStatuses.includes(value as HypothesisStatus)
 }
 
+const getApiErrorMessage = (error: unknown): string => {
+  const response = typeof error === "object" && error !== null && "response" in error
+    ? (error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }).response
+    : undefined
+
+  const validationErrors = response?.data?.errors
+  const firstValidationError = validationErrors ? Object.values(validationErrors)[0]?.[0] : undefined
+
+  return firstValidationError ?? response?.data?.message ?? "Не удалось выполнить действие."
+}
+
+const transitionConditionLabelsRu: Record<string, string> = {
+  required_fields: "не заполнены обязательные поля",
+  scoring_threshold: "не выполнен порог скоринга",
+  checklist_closed: "не закрыт обязательный чек-лист",
+}
+
+const translateTransitionErrorMessage = (message: string): string => {
+  const transitionNotConfiguredMatch = message.match(/^Transition from ([a-z_]+) to ([a-z_]+) is not configured\.$/)
+
+  if (transitionNotConfiguredMatch) {
+    const [, fromStatus, toStatus] = transitionNotConfiguredMatch
+
+    return `Переход из «${statusLabelsRu[fromStatus as HypothesisStatus] ?? fromStatus}» в «${statusLabelsRu[toStatus as HypothesisStatus] ?? toStatus}» не настроен.`
+  }
+
+  const conditionNotMetMatch = message.match(/^Transition condition not met: ([a-z_]+)$/)
+
+  if (conditionNotMetMatch) {
+    const [, conditionType] = conditionNotMetMatch
+
+    return `Переход недоступен: ${transitionConditionLabelsRu[conditionType] ?? conditionType}.`
+  }
+
+  if (message.includes("are not allowed for this transition")) {
+    return "У вас нет прав для выполнения этого перехода."
+  }
+
+  return message
+}
+
+const getTransitionErrorMessage = (error: unknown): string => {
+  return translateTransitionErrorMessage(getApiErrorMessage(error))
+}
+
 function mapApiDetailToHypothesis(source: ApiHypothesisDetail): Hypothesis {
   return {
     id: String(source.id),
@@ -173,6 +219,7 @@ export default function HypothesisPage({ params }: PageProps) {
   const [hasRequested, setHasRequested] = useState(false)
   const [comments, setComments] = useState<HypothesisComment[]>([])
   const [historyEntries, setHistoryEntries] = useState<AuditLogEntry[]>([])
+  const [transitionError, setTransitionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (Number.isNaN(numericId)) {
@@ -260,21 +307,46 @@ export default function HypothesisPage({ params }: PageProps) {
     setIsEditDialogOpen(true)
   }
 
+  const handleTransitionError = (error: unknown): string => {
+    const message = getTransitionErrorMessage(error)
+    setTransitionError(message)
+    toast.error(message)
+
+    return message
+  }
+
+  const handleTransition = async (toStatus: HypothesisStatus, comment?: string) => {
+    setTransitionError(null)
+
+    try {
+      await transitionHypothesisFx({
+        id: numericId,
+        to_status: toStatus,
+        comment,
+      })
+    } catch (error: unknown) {
+      handleTransitionError(error)
+      throw error
+    }
+  }
+
   const handleSaveEdit = async () => {
     if (!hypothesis || !editStatus) {
       setIsEditDialogOpen(false)
       return
     }
 
-    try {
-      if (editStatus !== hypothesis.status) {
-        await transitionHypothesisFx({
-          id: numericId,
-          to_status: editStatus,
-        })
-      }
-    } finally {
+    if (editStatus === hypothesis.status) {
+      setTransitionError(null)
       setIsEditDialogOpen(false)
+      return
+    }
+
+    try {
+      await handleTransition(editStatus)
+      setIsEditDialogOpen(false)
+    } catch {
+      // keep dialog open so the user can adjust the status after seeing the error
     }
   }
 
@@ -418,14 +490,9 @@ export default function HypothesisPage({ params }: PageProps) {
               <StatusTransitionPanel
                 hypothesis={hypothesis}
                 experiments={experiments}
-                onTransition={(toStatus, data) => {
-                  void transitionHypothesisFx({
-                    id: numericId,
-                    to_status: toStatus,
-                    comment: typeof data?.comment === "string" ? data.comment : undefined,
-                  })
-                }}
+                onTransition={(toStatus, data) => handleTransition(toStatus, typeof data?.comment === "string" ? data.comment : undefined)}
                 onTabChange={setActiveTab}
+                transitionError={transitionError}
               />
 
               <div className="grid gap-6 lg:grid-cols-3">

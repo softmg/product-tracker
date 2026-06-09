@@ -58,8 +58,9 @@ const SCORING_THRESHOLD = 7.0
 interface StatusTransitionPanelProps {
   hypothesis: Hypothesis
   experiments?: Experiment[]
-  onTransition?: (toStatus: HypothesisStatus, data?: Record<string, unknown>) => void
+  onTransition?: (toStatus: HypothesisStatus, data?: Record<string, unknown>) => Promise<void> | void
   onTabChange?: (tab: string) => void
+  transitionError?: string | null
 }
 
 interface TransitionCondition {
@@ -69,11 +70,12 @@ interface TransitionCondition {
   description?: string
 }
 
-export function StatusTransitionPanel({ 
-  hypothesis, 
+export function StatusTransitionPanel({
+  hypothesis,
   experiments = [],
   onTransition,
-  onTabChange 
+  onTabChange,
+  transitionError
 }: StatusTransitionPanelProps) {
   const [isTransitionDialogOpen, setIsTransitionDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -249,14 +251,11 @@ export function StatusTransitionPanel({
 
   const handleConfirmTransition = async () => {
     if (!targetStatus) return
-    
+
     setIsLoading(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     const transitionData: Record<string, unknown> = {}
-    
+
     if (currentStatus === 'go_no_go' && decisionResult) {
       transitionData.decision = {
         result: decisionResult,
@@ -264,14 +263,16 @@ export function StatusTransitionPanel({
         nextStep: nextStep
       }
     }
-    
-    onTransition?.(targetStatus, transitionData)
-    
-    setIsLoading(false)
-    setIsTransitionDialogOpen(false)
-    setDecisionResult('')
-    setDecisionComment('')
-    setNextStep('')
+
+    try {
+      await onTransition?.(targetStatus, transitionData)
+      setIsTransitionDialogOpen(false)
+      setDecisionResult('')
+      setDecisionComment('')
+      setNextStep('')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Voting summary for go_no_go status
@@ -463,6 +464,14 @@ export function StatusTransitionPanel({
                 </AlertDescription>
               </Alert>
             </>
+          )}
+
+          {transitionError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Не удалось выполнить переход</AlertTitle>
+              <AlertDescription>{transitionError}</AlertDescription>
+            </Alert>
           )}
 
           {/* Actions */}
