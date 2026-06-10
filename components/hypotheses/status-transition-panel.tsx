@@ -257,6 +257,7 @@ export function StatusTransitionPanel({
     const transitionData: Record<string, unknown> = {}
 
     if (currentStatus === 'go_no_go' && decisionResult) {
+      transitionData.comment = decisionComment
       transitionData.decision = {
         result: decisionResult,
         comment: decisionComment,

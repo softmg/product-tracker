@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Plus, Search, X, Filter, LayoutList, LayoutGrid } from "lucide-react"
 import { useUnit } from "effector-react"
@@ -31,6 +31,7 @@ import {
   $hypothesesMeta,
   $isLoading,
   fetchHypothesesFx,
+  requestHypotheses,
 } from "@/lib/stores/hypotheses/model"
 import type { ApiHypothesisList } from "@/lib/stores/hypotheses/types"
 
@@ -96,8 +97,10 @@ export default function HypothesesPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<ViewMode>("table")
   const [currentPage, setCurrentPage] = useState(1)
+  const [kanbanHypothesesRaw, setKanbanHypothesesRaw] = useState<ApiHypothesisList[]>([])
+  const [isKanbanLoading, setIsKanbanLoading] = useState(false)
 
-  const [hypothesesRaw, hypothesesMeta, isLoading, teams, users] = useUnit([
+  const [hypothesesRaw, hypothesesMeta, isTableLoading, teams, users] = useUnit([
     $hypotheses,
     $hypothesesMeta,
     $isLoading,
@@ -118,17 +121,73 @@ export default function HypothesesPage() {
   }, [])
 
   useEffect(() => {
-    void fetchHypothesesFx({
+    const filters = {
       status: viewMode === "table" && statusFilter !== "all" ? statusFilter : undefined,
       search: searchQuery || undefined,
       team_id: teamFilter !== "all" ? Number(teamFilter) : undefined,
       owner_id: ownerFilter !== "all" ? Number(ownerFilter) : undefined,
-      page: viewMode === "table" ? currentPage : 1,
-      per_page: viewMode === "table" ? TABLE_PAGE_SIZE : KANBAN_PAGE_SIZE,
-    })
+    }
+
+    if (viewMode === "table") {
+      void fetchHypothesesFx({
+        ...filters,
+        page: currentPage,
+        per_page: TABLE_PAGE_SIZE,
+      })
+
+      return
+    }
+
+    let isCancelled = false
+
+    const loadKanbanHypotheses = async () => {
+      setIsKanbanLoading(true)
+
+      try {
+        let page = 1
+        let lastPage = 1
+        const allHypotheses: ApiHypothesisList[] = []
+
+        do {
+          const result = await requestHypotheses({
+            ...filters,
+            page,
+            per_page: KANBAN_PAGE_SIZE,
+          })
+
+          if (isCancelled) {
+            return
+          }
+
+          allHypotheses.push(...result.data)
+          lastPage = result.meta.last_page
+          page += 1
+        } while (page <= lastPage)
+
+        if (!isCancelled) {
+          setKanbanHypothesesRaw(allHypotheses)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsKanbanLoading(false)
+        }
+      }
+    }
+
+    void loadKanbanHypotheses()
+
+    return () => {
+      isCancelled = true
+    }
   }, [currentPage, ownerFilter, searchQuery, statusFilter, teamFilter, viewMode])
 
-  const hypotheses = useMemo(() => hypothesesRaw.map(apiToHypothesis), [hypothesesRaw])
+  const displayedHypothesesRaw = viewMode === "kanban" ? kanbanHypothesesRaw : hypothesesRaw
+  const isLoading = viewMode === "kanban" ? isKanbanLoading : isTableLoading
+
+  const hypotheses = useMemo(
+    () => displayedHypothesesRaw.map(apiToHypothesis),
+    [displayedHypothesesRaw],
+  )
 
   const availableTeams = useMemo(() => {
     const teamsMap = new Map<string, string>()
@@ -137,7 +196,7 @@ export default function HypothesesPage() {
       teamsMap.set(String(team.id), team.name || `Команда ${team.id}`)
     }
 
-    for (const item of hypothesesRaw) {
+    for (const item of displayedHypothesesRaw) {
       if (item.team) {
         teamsMap.set(String(item.team.id), item.team.name || `Команда ${item.team.id}`)
       }
@@ -146,7 +205,7 @@ export default function HypothesesPage() {
     return Array.from(teamsMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypothesesRaw, teams])
+  }, [displayedHypothesesRaw, teams])
 
   const owners = useMemo(() => {
     const ownersMap = new Map<string, string>()
@@ -155,7 +214,7 @@ export default function HypothesesPage() {
       ownersMap.set(String(user.id), user.name || user.email || `Пользователь ${user.id}`)
     }
 
-    for (const item of hypothesesRaw) {
+    for (const item of displayedHypothesesRaw) {
       if (item.owner) {
         ownersMap.set(String(item.owner.id), item.owner.name || item.owner.email || `Пользователь ${item.owner.id}`)
       }
@@ -164,7 +223,17 @@ export default function HypothesesPage() {
     return Array.from(ownersMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypothesesRaw, users])
+  }, [displayedHypothesesRaw, users])
+
+  const teamNamesById = useMemo(
+    () => Object.fromEntries(availableTeams.map(({ id, name }) => [id, name])),
+    [availableTeams],
+  )
+
+  const ownerNamesById = useMemo(
+    () => Object.fromEntries(owners.map(({ id, name }) => [id, name])),
+    [owners],
+  )
 
   useEffect(() => {
     if (teamFilter !== "all" && availableTeams.length > 0 && !availableTeams.some((team) => team.id === teamFilter)) {
@@ -200,7 +269,9 @@ export default function HypothesesPage() {
     }
   }
 
-  const visibleCount = hypothesesMeta?.total ?? hypotheses.length
+  const visibleCount = viewMode === "kanban"
+    ? hypotheses.length
+    : (hypothesesMeta?.total ?? hypotheses.length)
 
   return (
     <>
@@ -361,6 +432,8 @@ export default function HypothesesPage() {
           ) : viewMode === "table" ? (
             <HypothesisTable
               hypotheses={hypotheses}
+              teamNamesById={teamNamesById}
+              ownerNamesById={ownerNamesById}
               currentPage={hypothesesMeta?.current_page ?? currentPage}
               totalPages={hypothesesMeta?.last_page ?? 1}
               totalItems={hypothesesMeta?.total ?? hypotheses.length}

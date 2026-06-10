@@ -193,4 +193,28 @@ class IntegrationTest extends TestCase
             'email' => $activeOwner->email,
         ]);
     }
+
+    public function test_user_options_can_be_filtered_by_search(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::PdManager]);
+        User::factory()->create([
+            'name' => 'Alice Searchable',
+            'email' => 'alice@example.com',
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Bob Unrelated',
+            'email' => 'bob@example.com',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($viewer, 'web')
+            ->getJson('/api/v1/users?search=Alice');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name');
+
+        $this->assertTrue($names->contains('Alice Searchable'));
+        $this->assertFalse($names->contains('Bob Unrelated'));
+    }
 }

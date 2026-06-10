@@ -17,7 +17,7 @@ class UserOptionsController extends Controller
         $search = $request->query('search');
 
         $query = User::query()
-            ->with('team')
+            ->select(['id', 'name', 'email'])
             ->where('is_active', true)
             ->orderBy('name');
 
@@ -31,10 +31,9 @@ class UserOptionsController extends Controller
             });
         }
 
-        return UserOptionResource::collection(
-            $query
-                ->paginate(100)
-                ->withQueryString(),
+        return new AnonymousResourceCollection(
+            $query->get(),
+            UserOptionResource::class,
         );
     }
 }

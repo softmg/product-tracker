@@ -490,7 +490,18 @@ export default function HypothesisPage({ params }: PageProps) {
               <StatusTransitionPanel
                 hypothesis={hypothesis}
                 experiments={experiments}
-                onTransition={(toStatus, data) => handleTransition(toStatus, typeof data?.comment === "string" ? data.comment : undefined)}
+                onTransition={(toStatus, data) => {
+                  const comment =
+                    typeof data?.comment === "string"
+                      ? data.comment
+                      : typeof data?.decision === "object" &&
+                          data.decision !== null &&
+                          typeof (data.decision as { comment?: unknown }).comment === "string"
+                        ? (data.decision as { comment: string }).comment
+                        : undefined
+
+                  return handleTransition(toStatus, comment)
+                }}
                 onTabChange={setActiveTab}
                 transitionError={transitionError}
               />
