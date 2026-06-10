@@ -166,4 +166,31 @@ class IntegrationTest extends TestCase
             collect($titles)->contains(fn ($t) => str_contains($t, 'Unique search term')),
         );
     }
+
+    public function test_authenticated_users_can_fetch_active_user_options(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::PdManager]);
+        $activeOwner = User::factory()->create([
+            'name' => 'Visible Owner',
+            'is_active' => true,
+        ]);
+        User::factory()->create([
+            'name' => 'Inactive Owner',
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($viewer, 'web')
+            ->getJson('/api/v1/users');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name');
+
+        $this->assertTrue($names->contains('Visible Owner'));
+        $this->assertFalse($names->contains('Inactive Owner'));
+        $response->assertJsonFragment([
+            'id' => $activeOwner->id,
+            'name' => 'Visible Owner',
+            'email' => $activeOwner->email,
+        ]);
+    }
 }

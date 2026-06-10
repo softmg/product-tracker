@@ -52,6 +52,7 @@ export interface FetchHypothesesParams {
   status?: string
   search?: string
   team_id?: number
+  owner_id?: number
   page?: number
   per_page?: number
   sort_by?: string

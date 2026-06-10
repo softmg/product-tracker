@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\HypothesisStatusController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\RespondentController;
 use App\Http\Controllers\Api\V1\ScoringController;
+use App\Http\Controllers\Api\V1\UserOptionsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -44,6 +45,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('teams', [TeamController::class, 'index']);
+        Route::get('users', [UserOptionsController::class, 'index']);
 
         Route::apiResource('hypotheses', HypothesisController::class);
         Route::get('hypotheses/{hypothesis}/transitions', [HypothesisStatusController::class, 'transitions']);

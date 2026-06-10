@@ -171,16 +171,33 @@ describe("hypotheses store", () => {
     expect(scope.getState($hypothesesMeta)?.total).toBe(1)
   })
 
-  it("fetchHypothesesFx passes filter params to API", async () => {
+  it("fetchHypothesesFx passes filter and pagination params to API", async () => {
     mockGet.mockResolvedValueOnce({ data: { data: [], meta: { ...mockMeta, total: 0 } } })
 
     const { fetchHypothesesFx } = await import("../model")
     const scope = fork()
 
-    await allSettled(fetchHypothesesFx, { scope, params: { status: "scoring", search: "test" } })
+    await allSettled(fetchHypothesesFx, {
+      scope,
+      params: {
+        status: "scoring",
+        search: "test",
+        team_id: 3,
+        owner_id: 5,
+        page: 2,
+        per_page: 10,
+      },
+    })
 
     expect(mockGet).toHaveBeenCalledWith("/api/v1/hypotheses", {
-      params: { status: "scoring", search: "test" },
+      params: {
+        status: "scoring",
+        search: "test",
+        team_id: 3,
+        owner_id: 5,
+        page: 2,
+        per_page: 10,
+      },
     })
   })
 

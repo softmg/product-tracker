@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
+import {
+  ArrowUpDown,
+  ArrowUp,
   ArrowDown,
   MoreHorizontal,
   Eye,
@@ -13,13 +13,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import {
@@ -39,23 +39,32 @@ interface HypothesisTableProps {
   ownerNamesById?: Record<string, string>
   teamNamesById?: Record<string, string>
   onDelete?: (id: string) => void
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  from: number | null
+  to: number | null
+  onPageChange: (page: number) => void
 }
 
 type SortField = "code" | "title" | "status" | "team" | "owner" | "score" | "updatedAt"
 type SortDirection = "asc" | "desc"
-
-const ITEMS_PER_PAGE = 10
 
 export function HypothesisTable({
   hypotheses,
   ownerNamesById = {},
   teamNamesById = {},
   onDelete,
+  currentPage,
+  totalPages,
+  totalItems,
+  from,
+  to,
+  onPageChange,
 }: HypothesisTableProps) {
   const { hasPermission } = useAuth()
   const [sortField, setSortField] = useState<SortField>("updatedAt")
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
-  const [currentPage, setCurrentPage] = useState(1)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -108,18 +117,13 @@ export function HypothesisTable({
     })
   }, [hypotheses, sortField, sortDirection, ownerNamesById, teamNamesById])
 
-  const totalPages = Math.ceil(sortedHypotheses.length / ITEMS_PER_PAGE)
-  const paginatedHypotheses = sortedHypotheses.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
-
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
       return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground/50" />
     }
-    return sortDirection === "asc" 
-      ? <ArrowUp className="ml-1 h-3 w-3" /> 
+
+    return sortDirection === "asc"
+      ? <ArrowUp className="ml-1 h-3 w-3" />
       : <ArrowDown className="ml-1 h-3 w-3" />
   }
 
@@ -138,7 +142,7 @@ export function HypothesisTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[100px]">
-                <button 
+                <button
                   onClick={() => handleSort("code")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -147,7 +151,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead>
-                <button 
+                <button
                   onClick={() => handleSort("title")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -156,7 +160,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead className="w-[120px]">
-                <button 
+                <button
                   onClick={() => handleSort("status")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -165,7 +169,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead className="w-[100px]">
-                <button 
+                <button
                   onClick={() => handleSort("team")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -174,7 +178,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead className="w-[140px]">
-                <button 
+                <button
                   onClick={() => handleSort("owner")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -183,7 +187,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead className="w-[80px] text-right">
-                <button 
+                <button
                   onClick={() => handleSort("score")}
                   className="flex items-center justify-end hover:text-foreground ml-auto"
                 >
@@ -192,7 +196,7 @@ export function HypothesisTable({
                 </button>
               </TableHead>
               <TableHead className="w-[100px]">
-                <button 
+                <button
                   onClick={() => handleSort("updatedAt")}
                   className="flex items-center hover:text-foreground"
                 >
@@ -204,14 +208,14 @@ export function HypothesisTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedHypotheses.length === 0 ? (
+            {sortedHypotheses.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   Гипотезы не найдены
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedHypotheses.map((hypothesis) => {
+              sortedHypotheses.map((hypothesis) => {
                 const teamName = teamNamesById[hypothesis.teamId]
                 const ownerName = ownerNamesById[hypothesis.ownerId]
 
@@ -221,7 +225,7 @@ export function HypothesisTable({
                       {hypothesis.code}
                     </TableCell>
                     <TableCell>
-                      <Link 
+                      <Link
                         href={`/hypotheses/${hypothesis.id}`}
                         className="font-medium hover:text-primary hover:underline"
                       >
@@ -265,7 +269,7 @@ export function HypothesisTable({
                           {hasPermission("hypothesis:delete") && (
                             <>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => onDelete?.(hypothesis.id)}
                                 className="text-destructive focus:text-destructive"
                               >
@@ -285,17 +289,16 @@ export function HypothesisTable({
         </Table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <p className="text-sm text-muted-foreground">
-            Показано {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, sortedHypotheses.length)} из {sortedHypotheses.length}
+            Показано {from ?? 0}-{to ?? 0} из {totalItems}
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -308,7 +311,7 @@ export function HypothesisTable({
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   className={cn("w-8", currentPage !== page && "bg-transparent")}
-                  onClick={() => setCurrentPage(page)}
+                  onClick={() => onPageChange(page)}
                 >
                   {page}
                 </Button>
@@ -317,7 +320,7 @@ export function HypothesisTable({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
               Вперёд
