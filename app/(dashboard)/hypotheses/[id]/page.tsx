@@ -326,7 +326,6 @@ export default function HypothesisPage({ params }: PageProps) {
       })
     } catch (error: unknown) {
       handleTransitionError(error)
-      throw error
     }
   }
 

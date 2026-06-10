@@ -17,7 +17,7 @@ class UserOptionsController extends Controller
         $search = $request->query('search');
 
         $query = User::query()
-            ->select(['id', 'name', 'email'])
+            ->select(['id', 'name'])
             ->where('is_active', true)
             ->orderBy('name');
 

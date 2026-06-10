@@ -4,11 +4,6 @@ import { allSettled, fork } from "effector"
 const mockUser = {
   id: 1,
   name: "Alice",
-  email: "alice@company.com",
-  role: "initiator" as const,
-  team_id: null,
-  team: null,
-  is_active: true,
 }
 
 const mockGet = vi.fn()
@@ -32,6 +27,6 @@ describe("user options store", () => {
 
     expect(mockGet).toHaveBeenCalledWith("/api/v1/users")
     expect(scope.getState($userOptions)).toHaveLength(1)
-    expect(scope.getState($userOptions)[0].email).toBe("alice@company.com")
+    expect(scope.getState($userOptions)[0].name).toBe("Alice")
   })
 })

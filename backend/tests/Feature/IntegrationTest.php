@@ -190,7 +190,6 @@ class IntegrationTest extends TestCase
         $response->assertJsonFragment([
             'id' => $activeOwner->id,
             'name' => 'Visible Owner',
-            'email' => $activeOwner->email,
         ]);
     }
 
