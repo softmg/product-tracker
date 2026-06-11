@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Plus, Search, X, Filter, LayoutList, LayoutGrid } from "lucide-react"
 import { useUnit } from "effector-react"
@@ -21,15 +21,24 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth-context"
 import type { Hypothesis, HypothesisStatus } from "@/lib/types"
+import { $teams, fetchTeamsFx } from "@/lib/stores/admin/teams"
+import {
+  $userOptions,
+  fetchUserOptionsFx,
+} from "@/lib/stores/users"
 import {
   $hypotheses,
+  $hypothesesMeta,
   $isLoading,
   fetchHypothesesFx,
-  isHypothesisMockMode,
+  requestHypotheses,
 } from "@/lib/stores/hypotheses/model"
 import type { ApiHypothesisList } from "@/lib/stores/hypotheses/types"
 
 type ViewMode = "table" | "kanban"
+
+const TABLE_PAGE_SIZE = 10
+const KANBAN_PAGE_SIZE = 100
 
 const allStatuses: HypothesisStatus[] = [
   "backlog",
@@ -55,7 +64,6 @@ function isHypothesisStatus(value: string): value is HypothesisStatus {
   return allStatuses.includes(value as HypothesisStatus)
 }
 
-/** Bridge: map API list item to the Hypothesis shape expected by UI components */
 function apiToHypothesis(h: ApiHypothesisList): Hypothesis {
   return {
     id: String(h.id),
@@ -88,9 +96,17 @@ export default function HypothesesPage() {
   const [teamFilter, setTeamFilter] = useState<string>("all")
   const [ownerFilter, setOwnerFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<ViewMode>("table")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [kanbanHypothesesRaw, setKanbanHypothesesRaw] = useState<ApiHypothesisList[]>([])
+  const [isKanbanLoading, setIsKanbanLoading] = useState(false)
 
-  const hypothesesRaw = useUnit($hypotheses)
-  const isLoading = useUnit($isLoading)
+  const [hypothesesRaw, hypothesesMeta, isTableLoading, teams, users] = useUnit([
+    $hypotheses,
+    $hypothesesMeta,
+    $isLoading,
+    $teams,
+    $userOptions,
+  ])
 
   useEffect(() => {
     const savedView = localStorage.getItem("hypotheses-view-mode") as ViewMode | null
@@ -100,25 +116,87 @@ export default function HypothesesPage() {
   }, [])
 
   useEffect(() => {
-    void fetchHypothesesFx({})
+    void fetchTeamsFx().catch(() => undefined)
+    void fetchUserOptionsFx().catch(() => undefined)
   }, [])
 
   useEffect(() => {
-    if (!isHypothesisMockMode) {
-      void fetchHypothesesFx({
-        status: viewMode === "table" && statusFilter !== "all" ? statusFilter : undefined,
-        search: searchQuery || undefined,
-        team_id: teamFilter !== "all" ? Number(teamFilter) : undefined,
-      })
+    const filters = {
+      status: viewMode === "table" && statusFilter !== "all" ? statusFilter : undefined,
+      search: searchQuery || undefined,
+      team_id: teamFilter !== "all" ? Number(teamFilter) : undefined,
+      owner_id: ownerFilter !== "all" ? Number(ownerFilter) : undefined,
     }
-  }, [statusFilter, searchQuery, teamFilter, viewMode])
 
-  const hypotheses = useMemo(() => hypothesesRaw.map(apiToHypothesis), [hypothesesRaw])
+    if (viewMode === "table") {
+      void fetchHypothesesFx({
+        ...filters,
+        page: currentPage,
+        per_page: TABLE_PAGE_SIZE,
+      })
+
+      return
+    }
+
+    let isCancelled = false
+
+    const loadKanbanHypotheses = async () => {
+      setIsKanbanLoading(true)
+
+      try {
+        let page = 1
+        let lastPage = 1
+        const allHypotheses: ApiHypothesisList[] = []
+
+        do {
+          const result = await requestHypotheses({
+            ...filters,
+            page,
+            per_page: KANBAN_PAGE_SIZE,
+          })
+
+          if (isCancelled) {
+            return
+          }
+
+          allHypotheses.push(...result.data)
+          lastPage = result.meta.last_page
+          page += 1
+        } while (page <= lastPage)
+
+        if (!isCancelled) {
+          setKanbanHypothesesRaw(allHypotheses)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsKanbanLoading(false)
+        }
+      }
+    }
+
+    void loadKanbanHypotheses()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [currentPage, ownerFilter, searchQuery, statusFilter, teamFilter, viewMode])
+
+  const displayedHypothesesRaw = viewMode === "kanban" ? kanbanHypothesesRaw : hypothesesRaw
+  const isLoading = viewMode === "kanban" ? isKanbanLoading : isTableLoading
+
+  const hypotheses = useMemo(
+    () => displayedHypothesesRaw.map(apiToHypothesis),
+    [displayedHypothesesRaw],
+  )
 
   const availableTeams = useMemo(() => {
     const teamsMap = new Map<string, string>()
 
-    for (const item of hypothesesRaw) {
+    for (const team of teams) {
+      teamsMap.set(String(team.id), team.name || `Команда ${team.id}`)
+    }
+
+    for (const item of displayedHypothesesRaw) {
       if (item.team) {
         teamsMap.set(String(item.team.id), item.team.name || `Команда ${item.team.id}`)
       }
@@ -127,12 +205,16 @@ export default function HypothesesPage() {
     return Array.from(teamsMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypothesesRaw])
+  }, [displayedHypothesesRaw, teams])
 
   const owners = useMemo(() => {
     const ownersMap = new Map<string, string>()
 
-    for (const item of hypothesesRaw) {
+    for (const user of users) {
+      ownersMap.set(String(user.id), user.name || user.email || `Пользователь ${user.id}`)
+    }
+
+    for (const item of displayedHypothesesRaw) {
       if (item.owner) {
         ownersMap.set(String(item.owner.id), item.owner.name || item.owner.email || `Пользователь ${item.owner.id}`)
       }
@@ -141,36 +223,29 @@ export default function HypothesesPage() {
     return Array.from(ownersMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"))
-  }, [hypothesesRaw])
+  }, [displayedHypothesesRaw, users])
+
+  const teamNamesById = useMemo(
+    () => Object.fromEntries(availableTeams.map(({ id, name }) => [id, name])),
+    [availableTeams],
+  )
+
+  const ownerNamesById = useMemo(
+    () => Object.fromEntries(owners.map(({ id, name }) => [id, name])),
+    [owners],
+  )
 
   useEffect(() => {
-    if (teamFilter !== "all" && !availableTeams.some((team) => team.id === teamFilter)) {
+    if (teamFilter !== "all" && availableTeams.length > 0 && !availableTeams.some((team) => team.id === teamFilter)) {
       setTeamFilter("all")
     }
   }, [availableTeams, teamFilter])
 
   useEffect(() => {
-    if (ownerFilter !== "all" && !owners.some((owner) => owner.id === ownerFilter)) {
+    if (ownerFilter !== "all" && owners.length > 0 && !owners.some((owner) => owner.id === ownerFilter)) {
       setOwnerFilter("all")
     }
   }, [ownerFilter, owners])
-
-  const filteredHypotheses = useMemo(() => {
-    return hypotheses.filter((h) => {
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        if (!h.title.toLowerCase().includes(query) && !h.code.toLowerCase().includes(query)) {
-          return false
-        }
-      }
-
-      if (viewMode === "table" && statusFilter !== "all" && h.status !== statusFilter) return false
-      if (teamFilter !== "all" && h.teamId !== teamFilter) return false
-      if (ownerFilter !== "all" && h.ownerId !== ownerFilter) return false
-
-      return true
-    })
-  }, [hypotheses, searchQuery, statusFilter, teamFilter, ownerFilter, viewMode])
 
   const activeFiltersCount = [
     viewMode === "table" && statusFilter !== "all",
@@ -183,14 +258,20 @@ export default function HypothesesPage() {
     setTeamFilter("all")
     setOwnerFilter("all")
     setSearchQuery("")
+    setCurrentPage(1)
   }
 
   const handleViewChange = (value: string) => {
     if (value === "table" || value === "kanban") {
       setViewMode(value)
+      setCurrentPage(1)
       localStorage.setItem("hypotheses-view-mode", value)
     }
   }
+
+  const visibleCount = viewMode === "kanban"
+    ? hypotheses.length
+    : (hypothesesMeta?.total ?? hypotheses.length)
 
   return (
     <>
@@ -220,12 +301,18 @@ export default function HypothesesPage() {
                 <Input
                   placeholder="Поиск гипотез..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="pl-9"
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => {
+                      setSearchQuery("")
+                      setCurrentPage(1)
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
@@ -236,7 +323,13 @@ export default function HypothesesPage() {
 
             <div className="flex items-center gap-2">
               {viewMode === "table" && (
-                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as HypothesisStatus | "all")}>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => {
+                    setStatusFilter(value as HypothesisStatus | "all")
+                    setCurrentPage(1)
+                  }}
+                >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Статус" />
                   </SelectTrigger>
@@ -251,7 +344,13 @@ export default function HypothesesPage() {
                 </Select>
               )}
 
-              <Select value={teamFilter} onValueChange={setTeamFilter}>
+              <Select
+                value={teamFilter}
+                onValueChange={(value) => {
+                  setTeamFilter(value)
+                  setCurrentPage(1)
+                }}
+              >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Команда" />
                 </SelectTrigger>
@@ -265,7 +364,13 @@ export default function HypothesesPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <Select
+                value={ownerFilter}
+                onValueChange={(value) => {
+                  setOwnerFilter(value)
+                  setCurrentPage(1)
+                }}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Владелец" />
                 </SelectTrigger>
@@ -308,10 +413,10 @@ export default function HypothesesPage() {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                Найдено: {filteredHypotheses.length}{" "}
-                {filteredHypotheses.length === 1
+                Найдено: {visibleCount}{" "}
+                {visibleCount === 1
                   ? "гипотеза"
-                  : filteredHypotheses.length >= 2 && filteredHypotheses.length <= 4
+                  : visibleCount >= 2 && visibleCount <= 4
                     ? "гипотезы"
                     : "гипотез"}
               </span>
@@ -325,9 +430,19 @@ export default function HypothesesPage() {
               ))}
             </div>
           ) : viewMode === "table" ? (
-            <HypothesisTable hypotheses={filteredHypotheses} />
+            <HypothesisTable
+              hypotheses={hypotheses}
+              teamNamesById={teamNamesById}
+              ownerNamesById={ownerNamesById}
+              currentPage={hypothesesMeta?.current_page ?? currentPage}
+              totalPages={hypothesesMeta?.last_page ?? 1}
+              totalItems={hypothesesMeta?.total ?? hypotheses.length}
+              from={hypothesesMeta?.from ?? null}
+              to={hypothesesMeta?.to ?? null}
+              onPageChange={setCurrentPage}
+            />
           ) : (
-            <HypothesisKanban hypotheses={filteredHypotheses} />
+            <HypothesisKanban hypotheses={hypotheses} />
           )}
         </div>
       </main>

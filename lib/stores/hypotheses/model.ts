@@ -48,7 +48,6 @@ const mapMockUserToApiRef = (id: number | string | null | undefined): ApiUserRef
   }
 }
 
-// Map mock hypothesis to API list shape
 const mapMockToApiList = (h: (typeof mockHypotheses)[number]): ApiHypothesisList => ({
   id: Number.parseInt(h.id.replace("hyp-", ""), 10) || 0,
   code: h.code,
@@ -85,42 +84,61 @@ const mapDetailToApiList = (h: ApiHypothesisDetail): ApiHypothesisList => ({
 
 const mockCreatedHypotheses: ApiHypothesisDetail[] = []
 
-// ─── Effects ────────────────────────────────────────────────────────────────
+export const requestHypotheses = async (
+  params: FetchHypothesesParams = {},
+): Promise<{ data: ApiHypothesisList[]; meta: ApiPaginationMeta }> => {
+  if (isHypothesisMockMode) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const filtered = mockHypotheses
+      .filter((h) => !params.status || h.status === params.status)
+      .filter((h) => !params.team_id || parseMockNumericId(h.teamId ?? "") === params.team_id)
+      .filter((h) => !params.owner_id || parseMockNumericId(h.ownerId ?? "") === params.owner_id)
+      .filter(
+        (h) =>
+          !params.search ||
+          h.title.toLowerCase().includes(params.search.toLowerCase()) ||
+          h.code.toLowerCase().includes(params.search.toLowerCase()),
+      )
+    const createdFiltered = mockCreatedHypotheses
+      .filter((h) => !params.status || h.status === params.status)
+      .filter((h) => !params.team_id || h.team_id === params.team_id)
+      .filter((h) => !params.owner_id || h.owner_id === params.owner_id)
+      .filter(
+        (h) =>
+          !params.search ||
+          h.title.toLowerCase().includes(params.search.toLowerCase()) ||
+          h.code.toLowerCase().includes(params.search.toLowerCase()),
+      )
+    const mapped = [...filtered.map(mapMockToApiList), ...createdFiltered.map(mapDetailToApiList)]
+    const perPage = Math.max(1, params.per_page ?? Math.max(mapped.length, 1))
+    const currentPage = Math.max(1, params.page ?? 1)
+    const total = mapped.length
+    const lastPage = Math.max(1, Math.ceil(total / perPage))
+    const start = (currentPage - 1) * perPage
+    const paginated = mapped.slice(start, start + perPage)
 
-export const fetchHypothesesFx = createEffect(
-  async (params: FetchHypothesesParams = {}): Promise<{ data: ApiHypothesisList[]; meta: ApiPaginationMeta }> => {
-    if (isHypothesisMockMode) {
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      const filtered = mockHypotheses
-        .filter((h) => !params.status || h.status === params.status)
-        .filter(
-          (h) =>
-            !params.search ||
-            h.title.toLowerCase().includes(params.search.toLowerCase()) ||
-            h.code.toLowerCase().includes(params.search.toLowerCase()),
-        )
-      const createdFiltered = mockCreatedHypotheses
-        .filter((h) => !params.status || h.status === params.status)
-        .filter(
-          (h) =>
-            !params.search ||
-            h.title.toLowerCase().includes(params.search.toLowerCase()) ||
-            h.code.toLowerCase().includes(params.search.toLowerCase()),
-        )
-      const mapped = [...filtered.map(mapMockToApiList), ...createdFiltered.map(mapDetailToApiList)]
-      return {
-        data: mapped,
-        meta: { current_page: 1, last_page: 1, per_page: mapped.length, total: mapped.length, from: 1, to: mapped.length },
-      }
+    return {
+      data: paginated,
+      meta: {
+        current_page: currentPage,
+        last_page: lastPage,
+        per_page: perPage,
+        total,
+        from: paginated.length > 0 ? start + 1 : null,
+        to: paginated.length > 0 ? start + paginated.length : null,
+      },
     }
+  }
 
-    const { data } = await apiClient.get<{ data: ApiHypothesisList[]; meta: ApiPaginationMeta }>(
-      "/api/v1/hypotheses",
-      { params },
-    )
-    return data
-  },
-)
+  const { data } = await apiClient.get<{ data: ApiHypothesisList[]; meta: ApiPaginationMeta }>(
+    "/api/v1/hypotheses",
+    { params },
+  )
+
+  return data
+}
+
+export const fetchHypothesesFx = createEffect(requestHypotheses)
 
 export const fetchHypothesisFx = createEffect(async (id: number): Promise<ApiHypothesisDetail> => {
   if (isHypothesisMockMode) {
@@ -226,13 +244,9 @@ export const deleteHypothesisFx = createEffect(async (id: number): Promise<void>
   await apiClient.delete(`/api/v1/hypotheses/${id}`)
 })
 
-// ─── Events ─────────────────────────────────────────────────────────────────
-
 export const resetHypotheses = createEvent()
 export const resetCurrentHypothesis = createEvent()
 export const setFilters = createEvent<FetchHypothesesParams>()
-
-// ─── Stores ─────────────────────────────────────────────────────────────────
 
 export const $hypotheses = createStore<ApiHypothesisList[]>([])
   .on(fetchHypothesesFx.doneData, (_, result) => result.data)
@@ -266,10 +280,9 @@ export const $isMutating = combine(
   updateHypothesisFx.pending,
   transitionHypothesisFx.pending,
   deleteHypothesisFx.pending,
-  (creating, updating, transitioning, deleting) => creating || updating || transitioning || deleting,
+  (creating, updating, transitioning, deleting) => creating || updating || deleting || transitioning,
 )
 
-// Re-fetch list when filters change
 sample({
   clock: setFilters,
   source: $filters,

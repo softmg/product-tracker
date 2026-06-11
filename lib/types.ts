@@ -15,6 +15,11 @@ export interface User {
   lastLoginAt?: string
 }
 
+export interface UserOption {
+  id: number
+  name: string
+}
+
 export type HypothesisStatus =
   | 'backlog'
   | 'scoring'
